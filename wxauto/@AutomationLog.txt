@@ -1,0 +1,265 @@
+2024-05-06 21:40:07.204 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-06 21:40:21.123 elements.py[375] Next -> 2024-05-06 21:43:04.080 elements.py[41] _split -> 2024-05-06 21:57:23.161 elements.py[41] _split -> 2024-05-06 21:58:18.326 elements.py[49] _split -> 2024-05-06 22:00:14.889 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-06 22:00:15.532 elements.py[49] _split -> Find Control Timeout(0s): {ControlType: TextControl}
+2024-05-06 22:10:51.613 elements.py[49] _split -> 2024-05-06 22:25:14.143 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:25:28.068 wxauto.py[248] SendMsg -> 2024-05-06 22:25:40.775 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:25:54.701 wxauto.py[248] SendMsg -> 2024-05-06 22:28:22.082 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:28:36.645 wxauto.py[248] SendMsg -> 2024-05-06 22:28:57.124 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:29:11.030 wxauto.py[248] SendMsg -> 2024-05-06 22:29:34.923 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:29:48.858 wxauto.py[248] SendMsg -> Find Control Timeout(10s): {Name: '小毛毛鱼', ControlType: EditControl}
+2024-05-06 22:29:59.078 pydevd_xml.py[293] _get_default_var_string_representation -> 2024-05-06 22:31:11.294 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:31:25.189 wxauto.py[248] SendMsg -> Find Control Timeout(10s): {Name: '小毛毛鱼', ControlType: EditControl}
+2024-05-06 22:31:35.380 pydevd_xml.py[293] _get_default_var_string_representation -> 2024-05-06 22:32:04.568 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:32:18.448 wxauto.py[248] SendMsg -> 2024-05-06 22:32:29.639 wxauto.py[363] CurrentChat -> Find Control Timeout(1s): {ControlType: TextControl}
+2024-05-06 22:33:30.010 elements.py[41] _split -> 2024-05-06 22:38:48.011 elements.py[41] _split -> 2024-05-06 23:00:15.834 elements.py[41] _split -> 2024-05-06 23:13:11.690 elements.py[49] _split -> 2024-05-06 23:13:55.032 elements.py[41] _split -> 2024-05-06 23:33:35.822 elements.py[41] _split -> 2024-05-06 23:37:24.225 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-06 23:37:49.999 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-06 23:40:38.003 elements.py[287] __init__ -> 2024-05-06 23:42:36.898 elements.py[287] __init__ -> 2024-05-07 22:10:02.621 elements.py[41] _split -> 2024-05-07 22:25:02.092 elements.py[50] _split -> Find Control Timeout(0s): {ControlType: TextControl}
+2024-05-07 22:25:48.158 elements.py[50] _split -> Find Control Timeout(0s): {ControlType: TextControl}
+2024-05-07 22:25:49.363 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:27:31.882 elements.py[41] _split -> 2024-05-07 22:34:28.857 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:34:38.878 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:34:46.367 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:34:53.932 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:01.787 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:13.531 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:21.060 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:28.697 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:36.504 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:43.969 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:35:56.168 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:36:03.776 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:36:11.455 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:36:19.093 elements.py[41] _split -> 2024-05-07 22:37:53.283 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:38:01.833 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:38:37.960 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:38:45.333 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:38:52.729 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:00.061 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:07.622 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:15.084 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:24.924 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:32.034 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:39.051 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:46.383 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:39:53.411 elements.py[41] _split -> 2024-05-07 22:40:06.960 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:40:15.043 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-07 22:43:06.959 elements.py[41] _split -> 2024-05-07 22:44:29.869 elements.py[41] _split -> 2024-05-10 22:48:46.754 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:48:54.296 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:49:03.368 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:49:09.914 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:49:16.332 elements.py[41] _split -> 2024-05-10 22:49:54.459 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:50:02.299 elements.py[41] _split -> 2024-05-10 22:53:11.948 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:53:19.976 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:53:29.105 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:53:35.890 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:53:42.342 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:54:21.394 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:54:27.882 elements.py[41] _split -> 2024-05-10 22:54:41.679 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:54:49.563 elements.py[41] _split -> 2024-05-10 22:56:14.859 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:56:22.785 elements.py[41] _split -> 2024-05-10 22:57:18.315 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:25.275 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:31.059 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:37.246 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:43.066 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:48.973 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:57:54.847 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:58:00.672 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:58:06.518 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:58:12.393 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:58:18.207 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-10 22:58:24.024 elements.py[41] _split -> 2024-05-13 22:49:14.365 wxauto.py[82] _show -> 
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+
+[WinError -2147221008] 尚未调用 CoInitialize。
+Can not load UIAutomationCore.dll.
+1, You may need to install Windows Update KB971513 if your OS is Windows XP, see https://github.com/yinkaisheng/WindowsUpdateKB971513ForIUIAutomation
+2, You need to use an UIAutomationInitializerInThread object if use uiautomation in a thread, see demos/uiautomation_in_thread.py
+2024-05-14 23:15:53.637 elements.py[41] _split -> 2024-05-14 23:18:09.710 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:18:16.510 elements.py[41] _split -> 2024-05-14 23:19:17.291 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:25.649 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:31.894 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:38.091 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:44.089 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:50.040 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:19:55.987 elements.py[41] _split -> 2024-05-14 23:22:46.275 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:22:53.749 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:22:59.699 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:23:05.526 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:23:10.911 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:23:15.179 elements.py[41] _split -> 2024-05-14 23:25:39.981 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:25:47.339 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:25:53.046 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:25:59.216 elements.py[41] _split -> 2024-05-14 23:27:27.470 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:27:34.651 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:27:40.010 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:27:45.339 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:27:50.654 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:27:55.957 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:28:01.281 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:28:06.592 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:28:12.008 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-14 23:28:25.239 elements.py[41] _split -> 2024-05-14 23:34:19.724 elements.py[41] _split -> 2024-05-14 23:36:31.413 elements.py[41] _split -> 2024-05-17 23:06:22.443 elements.py[41] _split -> 2024-05-17 23:29:47.684 elements.py[41] _split -> 2024-05-17 23:32:21.637 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:37.307 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:37.361 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:37.422 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:52.335 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:59.069 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:59.126 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:32:59.188 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:09.527 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:16.072 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:16.124 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:16.175 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:26.559 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:33.197 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:33.252 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:33.313 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:44.048 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:51.749 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:51.803 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:33:51.900 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:09.055 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:09.112 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:09.167 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:43.372 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:43.436 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:34:43.496 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:00.957 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:01.027 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:01.084 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:20.541 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:20.624 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:20.695 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:40.984 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:41.041 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:35:41.096 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:04.896 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:04.958 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:05.020 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:27.339 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:27.395 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:27.462 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:50.651 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:50.715 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:36:50.774 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:12.392 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:12.461 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:12.519 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:32.830 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:32.885 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:32.940 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:56.063 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:56.105 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:37:56.166 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:18.604 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:18.670 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:18.724 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:37.858 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:37.922 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:37.965 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:56.309 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:38:56.372 elements.py[41] _split -> Find Control Timeout(0s): {ControlType: ButtonControl}
+2024-05-17 23:44:50.903 elements.py[50] _split -> 

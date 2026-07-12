@@ -1,4 +1,5 @@
 import logging
+import os
 
 import datetime
 logger = logging.getLogger(__name__)
@@ -12,6 +13,8 @@ class Log:
         self.logger.setLevel(logging.DEBUG)
         now = datetime.datetime.now()  # 获取当前时间
         otherStyleTime = now.strftime("%Y-%m-%d")  # "%Y-%m-%d-%H-%M-%S"
+        # 确保 log 目录存在（打包后首次运行时可能没有）
+        os.makedirs('./log', exist_ok=True)
         # 追加写入文件a ，设置utf-8编码防止中文写入乱码
         file_log = logging.FileHandler(f'./log/{otherStyleTime}.log', 'a', encoding='utf-8')
 

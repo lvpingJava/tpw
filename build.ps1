@@ -173,6 +173,16 @@ foreach ($file in $rootFiles) {
     }
 }
 
+# --- 5e. 创建运行时需要的空目录 ---
+$runtimeDirs = @("log", "临时卡牌")
+foreach ($dir in $runtimeDirs) {
+    $dst = Join-Path $TargetDir $dir
+    if (-not (Test-Path $dst)) {
+        New-Item -ItemType Directory -Force -Path $dst | Out-Null
+        Write-OK "运行时目录: $dir (已创建)"
+    }
+}
+
 # ── 最终统计 ──────────────────────────────────────────────────
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Green
@@ -201,7 +211,7 @@ $keyFiles = @(
     "models\tpwlogo.png",
     "matplotlibes\matp.exe",
     "matplotlibes\models\besdet.onnx",
-    "配置\DmReg.dll"
+    "配置"
 )
 foreach ($key in $keyFiles) {
     $checkPath = Join-Path $TargetDir $key

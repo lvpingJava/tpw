@@ -1,4 +1,38 @@
+import sys
 import os
+from types import ModuleType
+
+# ===== 修复 certifi 证书路径问题（Nuitka 打包兼容） =====
+# 错误分析：旧代码 certifi.where() 返回 ""（空字符串），
+# 新版 requests(>=2.32) 在 adapters.py:81 导入时预加载 SSL 上下文，
+# 调用 load_verify_locations("")，Windows OpenSSL 拒绝空路径 → OSError: [Errno 22]
+# 修复方法：返回 cacert.pem 的真实路径，而不是空字符串
+
+if getattr(sys, 'frozen', False):
+    # Nuitka 打包后运行：cacert.pem 位于 exe 同级的 certifi 目录下
+    _certifi_base = os.path.dirname(sys.executable)
+else:
+    # 源码直接运行
+    _certifi_base = os.path.dirname(os.path.abspath(__file__))
+
+_CERT_PATH = os.path.join(_certifi_base, 'certifi', 'cacert.pem')
+
+# 伪造 certifi 模块，where() 必须返回有效的证书文件路径
+fake_certifi = ModuleType("certifi")
+fake_certifi.where = lambda p=_CERT_PATH: p
+
+fake_certifi_core = ModuleType("certifi.core")
+fake_certifi_core.where = lambda p=_CERT_PATH: p
+fake_certifi.core = fake_certifi_core
+
+sys.modules["certifi"] = fake_certifi
+sys.modules["certifi.core"] = fake_certifi_core
+
+# 同时设置环境变量（作为 urllib3 的后备读取路径）
+os.environ["SSL_CERT_FILE"] = _CERT_PATH
+os.environ["REQUESTS_CA_BUNDLE"] = _CERT_PATH
+
+
 import random
 import subprocess
 import shutil
@@ -22,7 +56,6 @@ from ui.tpwWebMainUI import Ui_MainWindow
 from PyQt5.QtWidgets import (
     QMainWindow,QMessageBox
 )
-import sys
 from webServer import webAppServerStart
 import loginCheck
 from log import Log

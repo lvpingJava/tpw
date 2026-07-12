@@ -8,7 +8,7 @@ def read_latest_sent_email_attachments(target_subject,lines_set,attachment_lines
     try:
         # 连接邮箱
         mail = imaplib.IMAP4_SSL('imap.qq.com', 993)
-        mail.login("827886863@qq.com", "qnicstvbbttibejg")
+        mail.login("827886863@qq.com", "ehsclmvozlfmbdeg")
 
         # 选择发件箱
         mail.select('"Sent Messages"')  # 英文账户

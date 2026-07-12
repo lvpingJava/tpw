@@ -1,0 +1,7 @@
+pywin32
+opencv-python
+numpy
+PyQt5
+requests
+mss
+pygetwindow

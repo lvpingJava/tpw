@@ -5,7 +5,7 @@
     "_github_account": "lvpingJava",
     "_github_email": "827886863@qq.com",
 
-    "server_url": "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@main",
+    "server_url": "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master",
     "_server_url_note": "jsDelivr CDN 地址。格式: https://cdn.jsdelivr.net/gh/{用户名}/{仓库名}@{分支名或版本tag}",
 
     "version": "6.4.9.7",

@@ -59,6 +59,10 @@ from PyQt5.QtWidgets import (
 from webServer import webAppServerStart
 import loginCheck
 from log import Log
+
+# ── 增量更新系统 ──
+from incremental_update.gui_updater import UpdateDialog
+
 logger = Log().get_log()
 class TpwMain(QMainWindow):
 
@@ -79,7 +83,7 @@ class TpwMain(QMainWindow):
         self.ui.pushButton_4.clicked.connect(self.gameFlash)
         self.ui.pushButton_5.clicked.connect(self.getGameHwnd)
         self.ui.pushButton_6.clicked.connect(self.register)
-        self.ui.pushButton_7.clicked.connect(self.udpate)
+        self.ui.pushButton_7.clicked.connect(self.incremental_update)
         self.ui.pushButton_8.clicked.connect(self.gameClear)
         self.ui.pushButton_10.clicked.connect(self.openUrl)
         self.ui.pushButton_11.clicked.connect(self.openUrl)
@@ -158,6 +162,44 @@ class TpwMain(QMainWindow):
         if result == QMessageBox.StandardButton.Ok:
             cl=clear()
             cl.info()
+
+    def incremental_update(self):
+        """增量更新：仅下载变更文件，无需下载完整安装包"""
+        # 更新服务器 URL —— 可通过 update_config.json 配置
+        # 默认使用 GitHub + jsDelivr CDN 方案
+        config_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "update_config.json"
+        )
+        server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@main"
+        try:
+            if os.path.exists(config_path):
+                import json
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    server_url = config.get("server_url", server_url)
+        except Exception:
+            pass
+
+        local_dir = os.path.dirname(os.path.realpath(__file__))
+
+        dialog = UpdateDialog(server_url, local_dir, self)
+        result = dialog.exec_()
+
+        if dialog.was_update_successful():
+            # 用户选择重启
+            try:
+                os.system('taskkill /f /im %s' % 'Runner.exe')
+            except Exception:
+                pass
+            try:
+                os.system('taskkill /f /im %s' % '躺平王客户端.exe')
+            except Exception:
+                pass
+            try:
+                os.system('taskkill /f /pid %s' % str(os.getpid()))
+            except Exception:
+                pass
 
     def udpate(self):
         result = QMessageBox.question(self, "提示", f"您确定要更新吗？ 辅助更新地址：https://cloud.189.cn/web/share?code=2ymiieaQRzum（密码：9lnu）", QMessageBox.StandardButton.Ok,

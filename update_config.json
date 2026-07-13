@@ -1,0 +1,40 @@
+{
+    "_comment": "TPW 增量更新配置文件",
+    "_usage": "builder.py 和 tpw_server.py 都会读取此配置",
+    "_github_repo": "https://github.com/lvpingJava/tpw.git",
+    "_github_account": "lvpingJava",
+    "_github_email": "827886863@qq.com",
+
+    "server_url": "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@main",
+    "_server_url_note": "jsDelivr CDN 地址。格式: https://cdn.jsdelivr.net/gh/{用户名}/{仓库名}@{分支名或版本tag}",
+
+    "version": "6.4.9.7",
+    "version_file": "models/tpwVer.txt",
+
+    "include_dirs": [
+        "配置", "手牌", "场景", "快速手牌", "暗月",
+        "models", "flaskr", "ui", "matplotlibes", "wxauto",
+        "other", "certifi"
+    ],
+
+    "include_globs": [
+        "*.py", "*.txt", "*.dll", "*.exe",
+        "*.bmp", "*.png", "*.gif", "*.tif", "*.jpg", "*.jpeg",
+        "*.json", "*.sql", "*.pem", "*.spec", "*.ui"
+    ],
+
+    "exclude_patterns": [
+        "__pycache__", "*.pyc", "*.log", "*.zip",
+        "临时*", ".git*", ".idea*", "*.md",
+        "test*.py"
+    ],
+
+    "root_scripts": [
+        "tpw_server.py", "webServer.py", "DmTool.py", "DmTest.py",
+        "fightThread.py", "game.py", "myutils.py", "log.py",
+        "loginCheck.py", "Plugin.py", "pyLog.py", "WxAuToTool.py",
+        "baiduOcr.py", "circleHandle.py", "FindColor.py",
+        "ftpUplaod.py", "killPid.py", "picture.py",
+        "pyImgMain.py", "pyOcrMain.py", "YOLO.py"
+    ]
+}

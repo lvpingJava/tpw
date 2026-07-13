@@ -136,3 +136,19 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# ── TPW 项目特定排除 ──
+tpw_server.dist/
+GameUpdateSystemProject/
+opencvImg/
+images/
+demo/
+wxautoPrd/
+tpw客户端源码/
+log/
+.idea/
+*.zip
+manifest_test.json
+nuitka-crash-report.xml
+临时卡牌/
+__pycache__/

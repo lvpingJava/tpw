@@ -11,6 +11,17 @@ import tempfile
 import requests
 
 
+# ── 绕过系统代理 ──
+# 有些 Windows 环境配置了 HTTP 代理，但代理不支持 HTTPS 直连 CDN，
+# 会导致 ProxyError + SSLEOFError。jsDelivr 是公共 CDN，无需代理。
+def _create_session():
+    """创建绕过系统代理的 requests Session"""
+    session = requests.Session()
+    session.trust_env = False
+    session.proxies = {"http": None, "https": None}
+    return session
+
+
 class IncrementalUpdater:
     """增量更新器：连接服务器获取 manifest.json，对比本地文件，仅下载变更部分"""
 
@@ -19,35 +30,45 @@ class IncrementalUpdater:
     # 下载分块大小
     CHUNK_SIZE = 8192
 
+    # ── 保护目录：这些目录中的文件绝不会被删除或覆盖 ──
+    # 防止垃圾清理误删 IDE 配置、虚拟环境、Git 仓库等开发目录
+    PROTECTED_DIRS = {
+        '.idea', '.git', '.venv', 'venv', '__pycache__',
+        '.qoder', '.trae', '.vscode',
+    }
+    # ── 保护文件：这些文件绝不会被覆盖或删除 ──
+    PROTECTED_FILES = {
+        '.gitignore', 'update_config.json',
+    }
+
     def __init__(self, server_url, local_dir, progress_callback=None, log_callback=None):
         """
         Args:
-            server_url: 更新服务器基础 URL（如 https://cdn.jsdelivr.net/gh/user/repo@latest）
+            server_url: 更新服务器基础 URL
             local_dir: 本地安装目录（将被更新的目录）
-            progress_callback: 可选，进度回调函数 callback(current, total, message)
-            log_callback: 可选，日志回调函数 callback(message)
+            progress_callback: 可选，进度回调 callback(current, total, message)
+            log_callback: 可选，日志回调 callback(message)
         """
         self.server_url = server_url.rstrip('/')
         self.local_dir = local_dir
         self._progress_cb = progress_callback or (lambda *a: None)
         self._log_cb = log_callback or (lambda m: print(m))
 
-        # 确保本地目录存在
         if not os.path.exists(self.local_dir):
             os.makedirs(self.local_dir)
 
-        # 状态追踪
+        # 创建绕过系统代理的 HTTP Session
+        self._session = _create_session()
+
         self._is_cancelled = False
         self._local_manifest_path = os.path.join(self.local_dir, "manifest.json")
 
     # ── 公共 API ─────────────────────────────────────────────
 
     def cancel(self):
-        """取消当前更新操作"""
         self._is_cancelled = True
 
     def get_local_version(self):
-        """读取本地 manifest.json 获取当前版本号，不存在则返回 "0.0.0" """
         if os.path.exists(self._local_manifest_path):
             try:
                 with open(self._local_manifest_path, 'r', encoding='utf-8') as f:
@@ -57,27 +78,12 @@ class IncrementalUpdater:
         return "0.0.0"
 
     def check_update(self):
-        """
-        检查是否有可用更新。
-
-        Returns:
-            dict: {
-                "has_update": bool,
-                "local_version": str,
-                "remote_version": str,
-                "need_download": list,    # 需要下载的文件列表
-                "total_files": int,       # 远程文件总数
-                "file_sizes": dict,       # {rel_path: size_in_bytes} 可选
-                "remote_manifest": dict,  # 远程完整清单
-            }
-        """
         self._is_cancelled = False
         self._log("正在连接更新服务器...")
 
-        # 1. 获取远程清单
         manifest_url = f"{self.server_url}/manifest.json"
         try:
-            resp = requests.get(manifest_url, timeout=15)
+            resp = self._session.get(manifest_url, timeout=15)
             resp.raise_for_status()
             remote_manifest = resp.json()
         except requests.RequestException as e:
@@ -94,7 +100,6 @@ class IncrementalUpdater:
         self._log(f"服务器版本: {remote_version}")
         self._log(f"本地版本: {local_version}")
 
-        # 2. 对比差异
         need_download = []
         keep_files = set()
         total = len(remote_files)
@@ -106,6 +111,11 @@ class IncrementalUpdater:
         for rel_path, remote_hash in remote_files.items():
             if self._is_cancelled:
                 return None
+
+            # 跳过保护目录中的文件（不纳入比对）
+            if self._is_protected(rel_path):
+                checked += 1
+                continue
 
             local_path = os.path.join(self.local_dir, rel_path)
             keep_files.add(os.path.abspath(local_path))
@@ -119,7 +129,6 @@ class IncrementalUpdater:
                 self._progress_cb(checked, total, f"已比对 {checked}/{total} 个文件")
 
         self._progress_cb(total, total, "文件比对完成")
-
         has_update = len(need_download) > 0 or local_version != remote_version
 
         result = {
@@ -128,29 +137,17 @@ class IncrementalUpdater:
             "remote_version": remote_version,
             "need_download": need_download,
             "total_files": total,
-            "file_sizes": remote_manifest.get("file_sizes", {}),
             "remote_manifest": remote_manifest,
             "keep_files": keep_files,
         }
 
         if not need_download and local_version == remote_version:
             self._log("当前已是最新版本，无需更新")
-            # 仍清理垃圾文件
             self._clean_garbage(keep_files)
 
         return result
 
     def download_files(self, file_list, keep_files=None):
-        """
-        下载指定的文件列表。
-
-        Args:
-            file_list: 要下载的文件相对路径列表
-            keep_files: 需要保留的文件绝对路径集合（用于后续清理）
-
-        Returns:
-            tuple: (success_count, fail_count)
-        """
         if not file_list:
             return 0, 0
 
@@ -163,6 +160,11 @@ class IncrementalUpdater:
             if self._is_cancelled:
                 self._log("更新已取消")
                 break
+
+            # 跳过保护目录中的文件
+            if self._is_protected(rel_path):
+                self._log(f"跳过受保护文件: {rel_path}")
+                continue
 
             file_url = f"{self.server_url}/{rel_path}"
             local_dest = os.path.join(self.local_dir, rel_path)
@@ -178,40 +180,28 @@ class IncrementalUpdater:
 
         self._progress_cb(total, total, f"下载完成: 成功 {success}, 失败 {fail}")
 
-        # 清理废弃文件
         if keep_files:
             self._clean_garbage(keep_files)
 
         return success, fail
 
     def apply_update(self):
-        """
-        执行完整更新流程：检查 → 下载 → 保存清单 → 清理
-
-        Returns:
-            bool: 更新是否成功
-        """
-        # 1. 检查更新
         result = self.check_update()
         if result is None:
             return False
         if not result["has_update"]:
             return True
 
-        # 2. 确认有文件需要下载
         file_list = result["need_download"]
         if not file_list:
-            # 版本号不同但无文件变更，直接更新本地清单
             self._save_local_manifest(result["remote_manifest"])
             self._clean_garbage(result.get("keep_files", set()))
             return True
 
-        # 3. 下载变更文件
         success, fail = self.download_files(
             file_list, keep_files=result.get("keep_files")
         )
 
-        # 4. 保存新清单
         if success > 0:
             self._save_local_manifest(result["remote_manifest"])
             self._log(f"更新完成: 版本 {result['remote_version']}, "
@@ -224,7 +214,6 @@ class IncrementalUpdater:
     # ── 内部方法 ─────────────────────────────────────────────
 
     def _get_local_file_hash(self, filepath):
-        """获取本地文件 MD5，不存在则返回 None"""
         if not os.path.exists(filepath):
             return None
         hasher = hashlib.md5()
@@ -237,13 +226,11 @@ class IncrementalUpdater:
             return None
 
     def _download_single_file(self, url, dest_path, rel_path):
-        """下载单个文件，先写临时文件，校验后原子替换"""
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
-                resp = requests.get(url, stream=True, timeout=30)
+                resp = self._session.get(url, stream=True, timeout=30)
                 resp.raise_for_status()
 
-                # 写入临时文件
                 tmp_fd, tmp_path = tempfile.mkstemp(
                     dir=os.path.dirname(dest_path) or self.local_dir,
                     prefix=".tmp_update_"
@@ -256,7 +243,6 @@ class IncrementalUpdater:
                                 return False
                             f.write(chunk)
 
-                    # 原子替换
                     if os.path.exists(dest_path):
                         os.remove(dest_path)
                     shutil.move(tmp_path, dest_path)
@@ -282,17 +268,44 @@ class IncrementalUpdater:
 
         return False
 
+    def _is_protected(self, rel_path):
+        """检查路径是否属于保护目录或保护文件"""
+        norm = rel_path.replace('\\', '/')
+        parts = norm.split('/')
+
+        # 检查路径中任何一级目录是否为保护目录
+        for part in parts[:-1]:
+            if part in self.PROTECTED_DIRS:
+                return True
+
+        # 检查根级目录
+        for d in self.PROTECTED_DIRS:
+            if norm.startswith(d + '/') or norm.startswith(d + '\\'):
+                return True
+
+        # 检查保护文件名
+        basename = os.path.basename(norm)
+        if basename in self.PROTECTED_FILES:
+            return True
+
+        return False
+
     def _clean_garbage(self, keep_files_set):
-        """清理不在 keep_files_set 中的本地文件"""
+        """清理不在 keep_files_set 中的本地文件（保护目录除外）"""
         cleaned = 0
         for root, dirs, files in os.walk(self.local_dir, topdown=False):
+            # 跳过保护目录
+            dirs[:] = [d for d in dirs if d not in self.PROTECTED_DIRS]
+
             for filename in files:
                 abs_path = os.path.abspath(os.path.join(root, filename))
-                # 保护：不删除 manifest.json 和 .py 脚本
+                rel_path = os.path.relpath(abs_path, self.local_dir)
+
                 if filename == "manifest.json":
                     continue
-                # 跳过临时文件
                 if filename.startswith(".tmp_update_"):
+                    continue
+                if self._is_protected(rel_path):
                     continue
 
                 if abs_path not in keep_files_set:
@@ -305,7 +318,6 @@ class IncrementalUpdater:
             self._log(f"已清理 {cleaned} 个废弃文件")
 
     def _save_local_manifest(self, manifest):
-        """保存清单到本地"""
         try:
             with open(self._local_manifest_path, 'w', encoding='utf-8') as f:
                 json.dump(manifest, f, indent=4, ensure_ascii=False)
@@ -320,8 +332,6 @@ class IncrementalUpdater:
 
 
 if __name__ == "__main__":
-    # 简单自测
-    import sys
     SERVER = "http://localhost:8000"
     LOCAL = "./test_local_dir"
 

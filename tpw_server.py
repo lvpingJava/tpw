@@ -171,7 +171,7 @@ class TpwMain(QMainWindow):
             os.path.dirname(os.path.realpath(__file__)),
             "update_config.json"
         )
-        server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master"
+        server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.5.0.0"
         try:
             if os.path.exists(config_path):
                 import json

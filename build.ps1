@@ -82,6 +82,11 @@ if (-not $SkipManifest) {
         Write-Warn "models/tpwVer.txt 目录不存在，跳过"
     }
 
+    # 0b2. 更新 server_url 使用版本 tag（@v{version} 无 CDN 缓存问题）
+    $config.server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v$Version"
+    $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
+    Write-OK "server_url → @v$Version"
+
     # 0c. 生成增量更新清单 (manifest.json)
     Write-Info "正在生成 manifest.json ..."
     $builderScript = Join-Path $ScriptDir "incremental_update\builder.py"
@@ -399,15 +404,13 @@ Write-Host "╔═════════════════════�
 Write-Host "║            发布更新到用户端                   ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Step A: 提交 Git（manifest.json + update_config.json）" -ForegroundColor White
+Write-Host "  Step A: 提交 Git 并推送 tag（tag 无 CDN 缓存问题）" -ForegroundColor White
 Write-Host "    git add manifest.json update_config.json models/tpwVer.txt" -ForegroundColor Gray
 Write-Host "    git commit -m ""v${Version}: 发布更新""" -ForegroundColor Gray
 Write-Host "    git push origin master" -ForegroundColor Gray
+Write-Host "    git tag v${Version} && git push origin v${Version}" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  Step B: 刷新 CDN 缓存（浏览器打开）" -ForegroundColor White
-Write-Host "    https://purge.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json" -ForegroundColor Gray
-Write-Host ""
-Write-Host "  Step C: 用户端点击「增量更新」即可获取更新" -ForegroundColor White
+Write-Host "  Step B: 用户端点击「增量更新」即可获取更新" -ForegroundColor White
 Write-Host "    仅下载变更文件，无需重新下载完整安装包" -ForegroundColor Gray
 Write-Host ""
 

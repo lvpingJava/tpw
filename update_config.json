@@ -36,7 +36,6 @@
                           "*.json",
                           "*.sql",
                           "*.pem",
-                          "*.spec",
                           "*.ui"
                       ],
     "exclude_patterns":  [

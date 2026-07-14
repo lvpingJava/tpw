@@ -89,7 +89,7 @@ class ManifestBuilder:
         if include_globs is None:
             include_globs = ["*.py", "*.txt", "*.dll", "*.exe", "*.bmp",
                              "*.png", "*.gif", "*.tif", "*.jpg", "*.jpeg",
-                             "*.json", "*.sql", "*.pem", "*.spec", "*.ui"]
+                             "*.json", "*.sql", "*.pem", "*.ui"]
         if exclude_patterns is None:
             exclude_patterns = [
                 "__pycache__", "*.pyc", "*.log", "*.zip",

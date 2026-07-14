@@ -1,6 +1,6 @@
 {
-    "version": "6.4.9.7",
-    "build_time": "2026-07-13 11:30:35",
+    "version": "6.5.0.0",
+    "build_time": "2026-07-14 17:45:20",
     "files": {
         "配置/21咕咕15射线310主卡.txt": "01c6e93eb41d8b56f9e3e90bd3d6b93c",
         "配置/21咕咕15射线310副卡.txt": "07a2402e734f8fade088667f8c0d7265",
@@ -4218,7 +4218,7 @@
         "暗月/暗月背景c.bmp": "58e2ae5549f7748392a59f307d9ea28d",
         "models/new.gif": "5b36bcd8829ff4b6b0956afeb4d38d71",
         "models/tpwlogo.png": "a6e45b4441fb44f8051d45564d3e8697",
-        "models/tpwVer.txt": "02a275e5902c27ebdd26eeb9dbf3a9ce",
+        "models/tpwVer.txt": "8f0c8b6c9369e071970222e260971353",
         "models/update.png": "a0250fd568a0836e9bde1ea186c8894b",
         "models/update.txt": "449d1cf7d4b91ff8e9b868862f674d88",
         "flaskr/db.py": "75b1ed322458b9020feeba0ccbeed4ac",
@@ -4273,7 +4273,7 @@
         "other/op_x64.dll": "03843de25e09ae78139d9ca36ec7e804",
         "other/tools_64.dll": "053ae5462bfcc65602da4f0f1b47d634",
         "certifi/cacert.pem": "53724ebe755e8c9505a580b59a6fa5d1",
-        "tpw_server.py": "a11967816730ff9a0bc61f5a8f2ba4d2",
+        "tpw_server.py": "daee4e87a4f62d7970281c296fb3305e",
         "webServer.py": "1e00e5af7b6e50b83d24e9cc1ee3e3be",
         "DmTool.py": "2a66b35ae7f58568a319971fe4138c7d",
         "DmTest.py": "93fc3cf6425d09ede79d3a002dbfff53",

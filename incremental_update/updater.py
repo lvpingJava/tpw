@@ -74,6 +74,10 @@ class IncrementalUpdater:
     PROTECTED_DIRS = {
         '.idea', '.git', '.venv', 'venv', '__pycache__',
         '.qoder', '.trae', '.vscode',
+        # Nuitka 编译产物 — 这些目录来自编译输出，不在 manifest 中
+        'matplotlib', 'PyQt5', 'numpy', 'cv2', 'PIL',
+        'contourpy', 'kiwisolver', 'markupsafe', 'psutil', 'zstandard',
+        'certifi', 'matplotlib.libs',
     }
     # ── 保护文件：这些文件绝不会被覆盖或删除 ──
     PROTECTED_FILES = {
@@ -114,6 +118,8 @@ class IncrementalUpdater:
         self._fallback_urls = _build_fallback_urls(server_url)
         # 记录实际使用的 CDN URL（manifest 获取成功后更新）
         self._active_base_url = server_url.rstrip('/')
+        # 记录被追踪的目录（check_update 时更新，用于垃圾清理范围限制）
+        self._tracked_dirs = set()
 
     # ── 公共 API ─────────────────────────────────────────────
 
@@ -188,6 +194,13 @@ class IncrementalUpdater:
         self._progress_cb(total, total, "文件比对完成")
         has_update = len(need_download) > 0 or local_version != remote_version
 
+        # ★ v2.1: 提取被追踪的顶级目录，用于垃圾清理时保护 Nuitka 产物
+        self._tracked_dirs = set()
+        for rel_path in remote_files:
+            norm = rel_path.replace('\\', '/')
+            if '/' in norm:
+                self._tracked_dirs.add(norm.split('/')[0])
+
         result = {
             "has_update": has_update,
             "local_version": local_version,
@@ -197,11 +210,12 @@ class IncrementalUpdater:
             "remote_manifest": remote_manifest,
             "keep_files": keep_files,
             "changelog": changelog,
+            "tracked_dirs": self._tracked_dirs,
         }
 
         if not need_download and local_version == remote_version:
             self._log("当前已是最新版本，无需更新")
-            self._clean_garbage(keep_files)
+            self._clean_garbage(keep_files, self._tracked_dirs)
 
         return result
 
@@ -263,7 +277,7 @@ class IncrementalUpdater:
         if fail == 0:
             self._cleanup_backup()
             if keep_files:
-                self._clean_garbage(keep_files)
+                self._clean_garbage(keep_files, self._tracked_dirs)
         else:
             self._log(f"有 {fail} 个文件下载失败，已恢复原始文件")
             self._restore_backup()
@@ -280,7 +294,7 @@ class IncrementalUpdater:
         file_list = result["need_download"]
         if not file_list:
             self._save_local_manifest(result["remote_manifest"])
-            self._clean_garbage(result.get("keep_files", set()))
+            self._clean_garbage(result.get("keep_files", set()), self._tracked_dirs)
             return True
 
         success, fail = self.download_files(
@@ -403,11 +417,18 @@ class IncrementalUpdater:
 
         return False
 
-    def _clean_garbage(self, keep_files_set):
-        """清理不在 keep_files_set 中的本地文件（保护目录除外）"""
+    def _clean_garbage(self, keep_files_set, tracked_dirs=None):
+        """清理不在 keep_files_set 中的废弃文件
+        
+        ★ v2.1 安全增强: 仅清理 manifest 追踪目录内的文件。
+        Nuitka 编译产物目录 (matplotlib/PyQt5/numpy 等) 完全不受影响。
+        """
+        if tracked_dirs is None:
+            tracked_dirs = set()
+
         cleaned = 0
         for root, dirs, files in os.walk(self.local_dir, topdown=False):
-            # 跳过保护目录
+            # 跳过保护目录（开发目录 + Nuitka 系统目录）
             dirs[:] = [d for d in dirs if d not in self.PROTECTED_DIRS]
 
             for filename in files:
@@ -421,6 +442,11 @@ class IncrementalUpdater:
                 if self._is_protected(rel_path):
                     continue
 
+                # ★ v2.1: 仅清理被 manifest 追踪的文件
+                # 不在追踪目录中的文件（Nuitka 产物等）绝对不删
+                if not self._is_in_tracked_scope(rel_path, tracked_dirs):
+                    continue
+
                 if abs_path not in keep_files_set:
                     try:
                         os.remove(abs_path)
@@ -429,6 +455,23 @@ class IncrementalUpdater:
                         pass
         if cleaned > 0:
             self._log(f"已清理 {cleaned} 个废弃文件")
+
+    @staticmethod
+    def _is_in_tracked_scope(rel_path, tracked_dirs):
+        """检查文件是否在 manifest 追踪的目录范围内
+        
+        例如: tracked_dirs={'手牌','场景'} 
+               '手牌/xxx.bmp' → True
+               'tpw_server.py' → True (根级文件)
+               'matplotlib/xxx' → False (不在追踪范围)
+        """
+        norm = rel_path.replace('\\', '/')
+        # 根级文件（无目录前缀）始终在追踪范围内
+        if '/' not in norm:
+            return True
+        # 检查顶级目录是否在追踪集合中
+        top_dir = norm.split('/')[0]
+        return top_dir in tracked_dirs
 
     def _save_local_manifest(self, manifest):
         try:

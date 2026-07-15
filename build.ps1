@@ -1,18 +1,26 @@
 ﻿# =============================================================================
-#  躺平王服务端 - 一键自动化打包脚本（集成增量更新系统）
+#  躺平王服务端 - 一键自动化打包脚本（集成增量更新系统）v3.0
 #
 #  用法:
 #    .\build.ps1                                    # 从 update_config.json 读取版本
 #    .\build.ps1 -Version "6.5.0.0"                 # 指定版本号，自动推导目标目录
 #    .\build.ps1 -Version "6.5.0.0" -SkipManifest   # 跳过清单生成（仅重新打包）
+#    .\build.ps1 -Version "6.5.0.0" -SkipNuitka     # 跳过编译（仅更新资源+清单）
+#    .\build.ps1 -Version "6.5.0.0" -CreateZip      # 打包后自动创建 ZIP 分发包
+#    .\build.ps1 -Version "6.5.0.0" -QuickUpdate    # 快捷模式: 跳过编译+自动ZIP (资源小更新用)
+#    .\build.ps1 -Version "6.5.0.0" -Changelog "更新手牌数据"  # 附带更新日志
 #    .\build.ps1 -TargetDir "D:\test_py\tpw\打包\tpw6.5.0.0"  # 手动指定目标目录
 #
-#  完整流程: 更新版本 → 生成清单 → Nuitka编译 → 复制资源 → 验证 → 提示Git操作
+#  完整流程: 更新版本 → 生成清单 → Nuitka编译 → 复制资源 → 验证 → ZIP打包 → 提示Git操作
 # =============================================================================
 param(
     [string]$Version = "",                          # 版本号，如 "6.5.0.0"
     [string]$TargetDir = "",                        # 输出目录（可从 Version 自动推导）
-    [switch]$SkipManifest = $false                  # 跳过清单生成步骤
+    [string]$Changelog = "",                        # 更新日志内容（写入 update_config.json 和 manifest.json）
+    [switch]$SkipManifest = $false,                 # 跳过清单生成步骤
+    [switch]$SkipNuitka = $false,                   # 跳过 Nuitka 编译（仅更新资源文件）
+    [switch]$CreateZip = $false,                    # 打包后自动创建 ZIP 分发包
+    [switch]$QuickUpdate = $false                   # 快捷模式: 跳过编译 + 自动ZIP（等同于 -SkipNuitka -CreateZip）
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +29,12 @@ $DistDir = Join-Path $ScriptDir "tpw_server.dist"
 $BuildDir = Join-Path $ScriptDir "tpw_server.build"
 $ConfigPath = Join-Path $ScriptDir "update_config.json"
 $VerFilePath = Join-Path $ScriptDir "models\tpwVer.txt"
+
+# ── QuickUpdate 快捷模式 ──
+if ($QuickUpdate) {
+    $SkipNuitka = $true
+    $CreateZip = $true
+}
 
 # ── 读取配置 ──────────────────────────────────────────────────
 $config = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -56,18 +70,23 @@ function Write-Info([string]$msg) {
 # ── 打印 Banner ────────────────────────────────────────────────
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║     躺平王服务端 - 自动化打包脚本 v2.0       ║" -ForegroundColor Cyan
-Write-Host "║     已集成增量更新系统                       ║" -ForegroundColor Cyan
+Write-Host "║     躺平王服务端 - 自动化打包脚本 v3.0       ║" -ForegroundColor Cyan
+Write-Host "║     已集成增量更新 + 自动ZIP分发              ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host "  版本号  : $Version" -ForegroundColor White
 Write-Host "  输出目录: $TargetDir" -ForegroundColor Gray
+if ($SkipNuitka)   { Write-Host "  跳过编译: 是 (仅更新资源)" -ForegroundColor Magenta }
+if ($CreateZip)    { Write-Host "  自动ZIP: 是" -ForegroundColor Magenta }
+if ($QuickUpdate)  { Write-Host "  模式: 快捷更新 (跳过编译 + 自动ZIP)" -ForegroundColor Magenta }
+if ($Changelog)    { Write-Host "  更新日志: $Changelog" -ForegroundColor Gray }
 Write-Host ""
+$totalSteps = 7
 
 # =====================================================================
 #  Step 0: 打包前准备（版本号 + 清单生成）
 # =====================================================================
 if (-not $SkipManifest) {
-    Write-Step "[0/6] 打包前准备..."
+    Write-Step "[0/7] 打包前准备..."
 
     # 0a. 更新 update_config.json 中的版本号
     $config.version = $Version
@@ -84,22 +103,35 @@ if (-not $SkipManifest) {
 
     # 0b2. 更新 server_url 使用版本 tag（@v{version} 无 CDN 缓存问题）
     $config.server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v$Version"
+    # 0b3. 更新 changelog（如果指定）
+    if ($Changelog) {
+        $config.changelog = $Changelog
+    }
     $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
     Write-OK "server_url → @v$Version"
+    if ($Changelog) { Write-OK "changelog → $Changelog" }
 
     # 0c. 生成增量更新清单 (manifest.json)
     Write-Info "正在生成 manifest.json ..."
-    $builderScript = Join-Path $ScriptDir "incremental_update\builder.py"
     $pythonExe = Join-Path $ScriptDir ".venv\Scripts\python.exe"
-
+    # 尝试多个可能的 Python 路径
     if (-not (Test-Path $pythonExe)) {
-        Write-Fail "虚拟环境未找到: $pythonExe"
-        Write-Info "请先激活虚拟环境: .\.venv\Scripts\Activate.ps1"
+        $pythonExe = Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+    }
+
+    if (-not $pythonExe -or -not (Test-Path $pythonExe)) {
+        Write-Fail "Python 未找到！请先激活虚拟环境: .\.venv\Scripts\Activate.ps1"
+        Write-Info "或确保 python 在系统 PATH 中"
         exit 1
     }
 
     $builderPy = Join-Path $ScriptDir "incremental_update\builder.py"
-    $manifestResult = & $pythonExe $builderPy --version $Version 2>&1
+    $builderArgs = @($builderPy, "--version", $Version)
+    if ($Changelog) {
+        $builderArgs += "--changelog"
+        $builderArgs += $Changelog
+    }
+    $manifestResult = & $pythonExe @builderArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "清单生成失败！"
         Write-Host $manifestResult
@@ -115,13 +147,13 @@ if (-not $SkipManifest) {
         Write-OK "清单包含 $manifestFileCount 个文件"
     }
 } else {
-    Write-Step "[0/6] 跳过打包前准备 (--SkipManifest)"
+    Write-Step "[0/$totalSteps] 跳过打包前准备 (--SkipManifest)"
 }
 
 # =====================================================================
 #  Step 1: 清理旧构建产物
 # =====================================================================
-Write-Step "[1/6] 清理旧构建产物..."
+Write-Step "[1/$totalSteps] 清理旧构建产物..."
 $toRemove = @($DistDir, $BuildDir)
 foreach ($path in $toRemove) {
     if (Test-Path $path) {
@@ -131,60 +163,80 @@ foreach ($path in $toRemove) {
 }
 
 # =====================================================================
-#  Step 2: Nuitka 编译打包
+#  Step 2: Nuitka 编译打包（可跳过）
 # =====================================================================
-Write-Step "[2/6] Nuitka 编译打包中 (约 3-8 分钟)..."
-$iconPath = Join-Path $ScriptDir "models\tpwlogo.png"
-$certPath = Join-Path $ScriptDir "certifi\cacert.pem"
-$mainScript = Join-Path $ScriptDir "tpw_server.py"
+if (-not $SkipNuitka) {
+    Write-Step "[2/$totalSteps] Nuitka 编译打包中 (约 3-8 分钟)..."
+    $iconPath = Join-Path $ScriptDir "models\tpwlogo.png"
+    $certPath = Join-Path $ScriptDir "certifi\cacert.pem"
+    $mainScript = Join-Path $ScriptDir "tpw_server.py"
 
-$nuitkaArgs = @(
-    "--standalone",
-    "--remove-output",
-    "--enable-plugin=pyqt5",
-    "--mingw64",
-    "--windows-icon-from-ico=$iconPath",
-    "--output-filename=躺平王服务端",
-    "--include-data-files=$certPath=certifi\cacert.pem",
-    "--assume-yes-for-downloads",
-    $mainScript
-)
+    $nuitkaArgs = @(
+        "--standalone",
+        "--remove-output",
+        "--enable-plugin=pyqt5",
+        "--mingw64",
+        "--windows-icon-from-ico=$iconPath",
+        "--output-filename=躺平王服务端",
+        "--include-data-files=$certPath=certifi\cacert.pem",
+        "--assume-yes-for-downloads",
+        $mainScript
+    )
 
-# 执行 Nuitka
-python -m nuitka @nuitkaArgs
+    # 执行 Nuitka
+    python -m nuitka @nuitkaArgs
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Fail "Nuitka 编译失败！退出码: $LASTEXITCODE"
-    exit 1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Nuitka 编译失败！退出码: $LASTEXITCODE"
+        Write-Warn "提示: 如果用 --SkipNuitka 跳过编译，请确保目标目录已有 exe"
+        exit 1
+    }
+    Write-OK "Nuitka 编译完成"
+} else {
+    Write-Step "[2/$totalSteps] 跳过 Nuitka 编译 (--SkipNuitka)"
 }
-Write-OK "Nuitka 编译完成"
 
 # =====================================================================
 #  Step 3: 准备目标目录
 # =====================================================================
-Write-Step "[3/6] 准备目标目录..."
-if (Test-Path $TargetDir) {
-    Write-Info "清空已有目录..."
-    Remove-Item -Recurse -Force $TargetDir -ErrorAction SilentlyContinue
+Write-Step "[3/$totalSteps] 准备目标目录..."
+if (-not $SkipNuitka) {
+    # 全量打包：清空重建
+    if (Test-Path $TargetDir) {
+        Write-Info "清空已有目录..."
+        Remove-Item -Recurse -Force $TargetDir -ErrorAction SilentlyContinue
+    }
+    New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
+} else {
+    # 资源更新：保留已有 exe/dll/pyd，仅覆盖资源
+    if (-not (Test-Path $TargetDir)) {
+        New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
+        Write-Warn "目标目录不存在已创建，但缺少 exe 文件！请先执行完整打包。"
+    } else {
+        Write-Info "保留已有编译产物，仅更新资源文件"
+    }
 }
-New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
 Write-OK "目标目录就绪"
 
 # =====================================================================
-#  Step 4: 复制 Nuitka 编译产物
+#  Step 4: 复制 Nuitka 编译产物（跳过则跳过）
 # =====================================================================
-Write-Step "[4/6] 复制程序文件..."
-Copy-Item -Path "$DistDir\*" -Destination $TargetDir -Recurse -Force
+if (-not $SkipNuitka) {
+    Write-Step "[4/$totalSteps] 复制程序文件..."
+    Copy-Item -Path "$DistDir\*" -Destination $TargetDir -Recurse -Force
 
-$exeCount = (Get-ChildItem -Path $TargetDir -Filter "*.exe").Count
-$dllCount = (Get-ChildItem -Path $TargetDir -Filter "*.dll").Count
-$pydCount = (Get-ChildItem -Path $TargetDir -Filter "*.pyd").Count
-Write-OK "已复制: $exeCount 个 exe, $dllCount 个 dll, $pydCount 个 pyd"
+    $exeCount = (Get-ChildItem -Path $TargetDir -Filter "*.exe").Count
+    $dllCount = (Get-ChildItem -Path $TargetDir -Filter "*.dll").Count
+    $pydCount = (Get-ChildItem -Path $TargetDir -Filter "*.pyd").Count
+    Write-OK "已复制: $exeCount 个 exe, $dllCount 个 dll, $pydCount 个 pyd"
+} else {
+    Write-Step "[4/$totalSteps] 跳过程序文件复制 (--SkipNuitka)"
+}
 
 # =====================================================================
 #  Step 5: 复制资源文件 + 增量更新相关文件
 # =====================================================================
-Write-Step "[5/6] 复制资源文件..."
+Write-Step "[5/$totalSteps] 复制资源文件..."
 
 # --- 5a. 复制完整资源目录 ---
 $resourceDirs = @(
@@ -261,7 +313,6 @@ foreach ($file in $rootFiles) {
 
 # --- 5e. 复制增量更新系统核心文件 ---
 Write-Host "  ── 增量更新系统 ──" -ForegroundColor Gray
-# manifest.json: 版本清单，增量更新的核心
 $manifestSrc = Join-Path $ScriptDir "manifest.json"
 if (Test-Path $manifestSrc) {
     Copy-Item -Path $manifestSrc -Destination $TargetDir -Force
@@ -270,14 +321,11 @@ if (Test-Path $manifestSrc) {
     Write-Fail "manifest.json 不存在！请先运行 builder.py 生成清单"
 }
 
-# update_config.json: 包含 CDN 地址，供运行时读取
 $configSrc = Join-Path $ScriptDir "update_config.json"
 if (Test-Path $configSrc) {
     Copy-Item -Path $configSrc -Destination $TargetDir -Force
     Write-OK "update_config.json (服务器地址配置)"
 }
-
-# incremental_update 模块由 Nuitka 编译到 exe 中，无需额外复制 Python 源码
 
 # --- 5f. 创建运行时需要的空目录 ---
 $runtimeDirs = @("log", "临时卡牌")
@@ -292,7 +340,7 @@ foreach ($dir in $runtimeDirs) {
 # =====================================================================
 #  Step 6: 打包后验证
 # =====================================================================
-Write-Step "[6/6] 打包后验证..."
+Write-Step "[6/$totalSteps] 打包后验证..."
 
 $allOk = $true
 $totalFiles = (Get-ChildItem -Path $TargetDir -Recurse -File).Count
@@ -323,8 +371,12 @@ foreach ($item in $keyFiles) {
     if (Test-Path $checkPath) {
         Write-Host "    ✓ $($item.Path)  [$($item.Desc)]" -ForegroundColor Green
     } else {
-        Write-Host "    ✗ $($item.Path)  缺失! [$($item.Desc)]" -ForegroundColor Red
-        $allOk = $false
+        if ($SkipNuitka -and $item.Path -eq "躺平王服务端.exe") {
+            Write-Host "    ⚠ $($item.Path)  跳过 (--SkipNuitka 模式)" -ForegroundColor Yellow
+        } else {
+            Write-Host "    ✗ $($item.Path)  缺失! [$($item.Desc)]" -ForegroundColor Red
+            $allOk = $false
+        }
     }
 }
 
@@ -332,7 +384,6 @@ foreach ($item in $keyFiles) {
 Write-Host ""
 Write-Host "  增量更新兼容性检查:" -ForegroundColor Gray
 
-# 验证 manifest.json 内容完整性
 $pkgManifestPath = Join-Path $TargetDir "manifest.json"
 if (Test-Path $pkgManifestPath) {
     $pkgManifest = Get-Content $pkgManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -342,7 +393,6 @@ if (Test-Path $pkgManifestPath) {
     Write-Host "    ✓ 清单版本: $pkgVersion" -ForegroundColor Green
     Write-Host "    ✓ 清单文件数: $pkgFileCount" -ForegroundColor Green
 
-    # 抽查几个资源目录是否在清单中
     $samplePaths = @("models/tpwVer.txt", "models/tpwlogo.png", "手牌", "场景")
     foreach ($sp in $samplePaths) {
         $found = $false
@@ -355,7 +405,6 @@ if (Test-Path $pkgManifestPath) {
         if ($found) {
             Write-Host "    ✓ 清单包含: $sp" -ForegroundColor Green
         } else {
-            # 检查该路径是否实际有文件
             $spCheck = Join-Path $TargetDir $sp
             if (Test-Path $spCheck) {
                 Write-Host "    ⚠ 清单缺少: $sp (已打包但不在清单中)" -ForegroundColor Yellow
@@ -367,7 +416,6 @@ if (Test-Path $pkgManifestPath) {
     $allOk = $false
 }
 
-# 验证 update_config.json 中的 server_url
 $pkgConfigPath = Join-Path $TargetDir "update_config.json"
 if (Test-Path $pkgConfigPath) {
     $pkgConfig = Get-Content $pkgConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -399,7 +447,28 @@ Write-Host ""
 Write-Host "  可直接运行: $TargetDir\躺平王服务端.exe" -ForegroundColor Cyan
 Write-Host ""
 
+# =====================================================================
+#  Step 7: 自动创建 ZIP 分发包（可选）
+# =====================================================================
+if ($CreateZip) {
+    Write-Step "[7/$totalSteps] 创建 ZIP 分发包..."
+    $zipPath = "D:\test_py\tpw\打包\tpw${Version}.zip"
+    try {
+        if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+        }
+        Compress-Archive -Path "$TargetDir\*" -DestinationPath $zipPath -CompressionLevel Optimal
+        $zipSizeMB = [math]::Round(((Get-Item $zipPath).Length / 1MB), 2)
+        Write-OK "ZIP 分发包已创建: $zipPath ($zipSizeMB MB)"
+        Write-Host "  首次用户下载此 ZIP 解压即可使用" -ForegroundColor Cyan
+    } catch {
+        Write-Warn "ZIP 创建失败: $_"
+        Write-Info "请手动压缩: $TargetDir"
+    }
+}
+
 # ── 下一步操作提示 ────────────────────────────────────────────
+Write-Host ""
 Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║            发布更新到用户端                   ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
@@ -408,9 +477,26 @@ Write-Host "  Step A: 提交 Git 并推送 tag（tag 无 CDN 缓存问题）" -F
 Write-Host "    git add manifest.json update_config.json models/tpwVer.txt" -ForegroundColor Gray
 Write-Host "    git commit -m ""v${Version}: 发布更新""" -ForegroundColor Gray
 Write-Host "    git push origin master" -ForegroundColor Gray
-Write-Host "    git tag v${Version} && git push origin v${Version}" -ForegroundColor Gray
+Write-Host "    git tag v${Version} ; git push origin v${Version}" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  Step B: 用户端点击「增量更新」即可获取更新" -ForegroundColor White
-Write-Host "    仅下载变更文件，无需重新下载完整安装包" -ForegroundColor Gray
+Write-Host "  Step B: 分发完整安装包给首次用户" -ForegroundColor White
+if ($CreateZip) {
+    Write-Host "    ZIP 已生成: D:\test_py\tpw\打包\tpw${Version}.zip" -ForegroundColor Gray
+} else {
+    Write-Host "    手动压缩: $TargetDir  (或下次使用 -CreateZip 自动创建)" -ForegroundColor Gray
+}
+Write-Host ""
+Write-Host "  Step C: 已有用户点击「增量更新」仅下载变更文件" -ForegroundColor White
+Write-Host "    无需重新下载完整安装包" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  ── 快捷命令 ──" -ForegroundColor Cyan
+Write-Host "  # 资源文件小更新 (快捷模式，跳过编译+自动ZIP):" -ForegroundColor Gray
+Write-Host "  .\build.ps1 -Version ""${Version}"" -QuickUpdate" -ForegroundColor Gray
+Write-Host "  # 资源文件更新 (跳过编译):" -ForegroundColor Gray
+Write-Host "  .\build.ps1 -Version ""${Version}"" -SkipNuitka -CreateZip" -ForegroundColor Gray
+Write-Host "  # 完整打包 + 自动 ZIP:" -ForegroundColor Gray
+Write-Host "  .\build.ps1 -Version ""${Version}"" -CreateZip" -ForegroundColor Gray
+Write-Host "  # 附带更新日志:" -ForegroundColor Gray
+Write-Host "  .\build.ps1 -Version ""${Version}"" -QuickUpdate -Changelog ""修复手牌识别 Bug""" -ForegroundColor Gray
 Write-Host ""
 

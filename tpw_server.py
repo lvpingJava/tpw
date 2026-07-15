@@ -164,38 +164,44 @@ class TpwMain(QMainWindow):
             cl.info()
 
     def incremental_update(self):
-        """增量更新：仅下载变更文件，无需下载完整安装包"""
-        # 更新服务器 URL —— 可通过 update_config.json 配置
-        # 默认使用 GitHub + jsDelivr CDN 方案
+        """增量更新：仅下载变更文件，无需下载完整安装包
+        
+        流程: 读取 update_config.json → 连接 CDN 获取远程清单 →
+              MD5 逐文件比对 → 仅下载变更文件 → 提示重启
+        """
+        import json as _json
+        
         config_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "update_config.json"
         )
-        server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.5.0.0"
+        server_url = "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master"
         try:
             if os.path.exists(config_path):
-                import json
                 with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
+                    config = _json.load(f)
                     server_url = config.get("server_url", server_url)
         except Exception:
             pass
 
         local_dir = os.path.dirname(os.path.realpath(__file__))
+        
+        # 检查本地是否已有 manifest.json（判断是否首次安装）
+        local_manifest = os.path.join(local_dir, "manifest.json")
+        is_first_update = not os.path.exists(local_manifest)
+        if is_first_update:
+            logger.info("首次增量更新：本地无 manifest.json，将进行全量比对")
 
         dialog = UpdateDialog(server_url, local_dir, self)
-        result = dialog.exec_()
+        dialog.exec_()
 
         if dialog.was_update_successful():
-            # 用户选择重启
-            try:
-                os.system('taskkill /f /im %s' % 'Runner.exe')
-            except Exception:
-                pass
-            try:
-                os.system('taskkill /f /im %s' % '躺平王客户端.exe')
-            except Exception:
-                pass
+            logger.info("增量更新成功，准备重启程序...")
+            for proc in ['Runner.exe', '躺平王客户端.exe']:
+                try:
+                    os.system('taskkill /f /im %s' % proc)
+                except Exception:
+                    pass
             try:
                 os.system('taskkill /f /pid %s' % str(os.getpid()))
             except Exception:

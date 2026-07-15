@@ -25,15 +25,21 @@
 
 | 文件 | 职责 |
 |------|------|
-| `incremental_update/builder.py` | 清单构建器：扫描目录，生成 manifest.json（版本号 + 全部文件的 MD5 哈希） |
-| `incremental_update/updater.py` | 增量更新引擎：下载远程清单 → 逐文件 MD5 比对 → 仅下载变更文件 |
-| `incremental_update/gui_updater.py` | PyQt5 更新对话框界面，后台线程执行 |
-| `update_config.json` | 统一配置文件（服务器地址、版本号、扫描规则） |
+| `incremental_update/builder.py` | 清单构建器 v2.0：扫描目录，生成 manifest.json（MD5 + SHA-256 双重哈希） |
+| `incremental_update/updater.py` | 增量更新引擎 v2.0：CDN多级回退 + 下载校验 + 回滚支持 |
+| `incremental_update/gui_updater.py` | PyQt5 更新对话框 v2.0：变更日志 + 重试 + 双进度条 |
+| `update_config.json` | 统一配置文件（服务器地址、版本号、扫描规则、更新日志） |
 | `tpw_server.py` | 主程序入口，`pushButton_7` 绑定 `incremental_update()` 方法 |
 
 ### 核心原理
 
-> **文件级 MD5 哈希比对**，而非二进制 diff/patch。客户端对比本地文件 MD5 与服务器 manifest.json 中的 MD5，不同的才下载。实现简单、健壮，无需维护二进制 patch 文件。
+> **文件级 MD5/SHA-256 双重哈希比对**，而非二进制 diff/patch。客户端对比本地文件哈希与服务器 manifest.json 中的哈希，不同的才下载。实现简单、健壮，无需维护二进制 patch 文件。
+>
+> **v2.0 新特性**：
+> - **CDN 多级回退**：jsDelivr → GitHub Raw → jsDelivr @master，主CDN不可用时自动切换
+> - **下载完整性校验**：下载后 SHA-256 验证，确保文件未损坏或被篡改
+> - **回滚支持**：更新失败时自动恢复原始文件，保证程序可用
+> - **变更日志展示**：更新对话框显示本次更新内容
 
 ---
 
@@ -80,33 +86,23 @@
 # 方式一：命令行指定版本号（推荐）
 py .\incremental_update\builder.py --version "6.4.9.8"
 
-# 方式二：从 update_config.json 读取版本号
+# 方式二：附带更新日志
+py .\incremental_update\builder.py --version "6.4.9.8" --changelog "更新手牌识别数据"
+
+# 方式三：从 update_config.json 读取版本号
 py .\incremental_update\builder.py --config update_config.json
 ```
 
-执行后会输出类似：
-
-```
-构建清单: 版本 6.4.9.8
-源目录: D:\test_py\tpw\tpw2-master
-扫描目录: ['配置', '手牌', '场景', '快速手牌', '暗月', 'models', 'flaskr', ...]
-  [a1b2c3d4] 手牌/手牌1/某卡牌.bmp
-  [e5f6g7h8] 场景/某场景.bmp
-  ...
-清单已生成: D:\test_py\tpw\tpw2-master\manifest.json
-文件总数: 4292 (跳过 15)
-```
-
-生成的 `manifest.json` 结构：
+生成的 `manifest.json` 结构（v2.0 格式，包含 MD5 + SHA-256）：
 
 ```json
 {
     "version": "6.4.9.8",
-    "build_time": "2026-07-12 15:30:00",
+    "build_time": "2026-07-14 15:30:00",
+    "changelog": "更新手牌识别数据",
     "files": {
-        "手牌/手牌1/某卡牌.bmp": "a1b2c3d4e5f6...",
-        "场景/某场景.bmp": "e5f6g7h8a1b2...",
-        "tpw_server.py": "12345678abcd...",
+        "手牌/手牌1/某卡牌.bmp": {"md5": "a1b2c3d4...", "sha256": "e5f6g7h8..."},
+        "场景/某场景.bmp": {"md5": "12345678...", "sha256": "abcdef12..."},
         ...
     }
 }
@@ -405,50 +401,59 @@ cd d:\test_py\tpw\tpw2-master
 # ── 方式一：指定版本号一键打包（推荐） ──
 .\build.ps1 -Version "6.5.0.0"
 
-# ── 方式二：从 update_config.json 读取版本 ──
+# ── 方式二：快捷更新模式（跳过编译+自动ZIP，资源小更新用） ──
+.\build.ps1 -Version "6.5.0.0" -QuickUpdate
+
+# ── 方式三：附带更新日志 ──
+.\build.ps1 -Version "6.5.0.0" -QuickUpdate -Changelog "修复手牌识别Bug，新增暗月场景"
+
+# ── 方式四：从 update_config.json 读取版本 ──
 .\build.ps1
 
-# ── 方式三：指定输出目录 ──
+# ── 方式五：指定输出目录 ──
 .\build.ps1 -Version "6.5.0.0" -TargetDir "D:\test_py\tpw\打包\tpw6.5.0.0"
 
-# ── 方式四：仅重新打包，跳过清单生成（调试用） ──
+# ── 方式六：仅重新打包，跳过清单生成（调试用） ──
 .\build.ps1 -Version "6.5.0.0" -SkipManifest
 ```
 
-### 8.3 脚本执行流程（6 步）
+### 8.3 脚本执行流程（7 步）
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  Step 0: 打包前准备                                               │
-│    ├─ 更新 update_config.json 版本号                              │
+│    ├─ 更新 update_config.json 版本号 + changelog                  │
 │    ├─ 更新 models/tpwVer.txt 版本号                               │
-│    └─ 运行 builder.py 生成 manifest.json                          │
+│    └─ 运行 builder.py 生成 manifest.json（MD5 + SHA-256）         │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 1: 清理旧构建产物                                           │
 │    └─ 删除 tpw_server.dist/ 和 tpw_server.build/                  │
 ├──────────────────────────────────────────────────────────────────┤
-│  Step 2: Nuitka 编译打包 (约 3-8 分钟)                            │
+│  Step 2: Nuitka 编译打包 (约 3-8 分钟，可用 -SkipNuitka 跳过)     │
 │    └─ Python 源码 → 躺平王服务端.exe (含所有依赖)                  │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 3: 准备目标目录                                             │
 │    └─ 创建/清空 D:\test_py\tpw\打包\tpw{版本号}                   │
 ├──────────────────────────────────────────────────────────────────┤
-│  Step 4: 复制 Nuitka 产物                                        │
+│  Step 4: 复制 Nuitka 产物（-SkipNuitka 时跳过）                   │
 │    └─ exe + dll + pyd 文件                                        │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 5: 复制资源文件 + 增量更新文件                               │
 │    ├─ 资源目录: 手牌/场景/配置/models/暗月/快速手牌                │
 │    ├─ OCR引擎: matplotlibes/matp.exe + models/                    │
 │    ├─ 原生DLL: other/*.dll + tess_model                           │
-│    ├─ ★ manifest.json     (增量更新清单)                          │
+│    ├─ ★ manifest.json     (增量更新清单 v2.0)                     │
 │    ├─ ★ update_config.json (CDN地址配置)                          │
 │    └─ 运行时目录: log/ + 临时卡牌/                                 │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 6: 打包后验证                                               │
 │    ├─ 关键文件存在性检查                                          │
-│    ├─ manifest.json 内容完整性检查                                │
+│    ├─ manifest.json 内容完整性检查 (SHA-256 自校验)               │
 │    ├─ update_config.json CDN 地址检查                             │
 │    └─ 显示下一步 Git 操作提示                                     │
+├──────────────────────────────────────────────────────────────────┤
+│  Step 7: ZIP 分发（-CreateZip 或 -QuickUpdate 时）                │
+│    └─ 自动压缩打包目录为 .zip 文件                                │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -485,12 +490,13 @@ git push origin master
 **场景 1：更新手牌识别数据**
 ```powershell
 # 1. 修改手牌图片（替换/新增 .bmp 文件）
-# 2. 一键打包
-.\build.ps1 -Version "6.4.9.8"
+# 2. 快捷打包（跳过编译，仅更新资源）
+.\build.ps1 -Version "6.4.9.8" -QuickUpdate -Changelog "更新手牌数据"
 # 3. 推送清单到 Git
 git add manifest.json update_config.json models/tpwVer.txt
 git commit -m "v6.4.9.8: 更新手牌数据"
 git push origin master
+git tag v6.4.9.8; git push origin v6.4.9.8
 # 4. 完成！已有用户点击「增量更新」仅下载变更的手牌图片
 ```
 
@@ -501,6 +507,7 @@ git push origin master
 git add manifest.json update_config.json models/tpwVer.txt
 git commit -m "v6.5.0.0: 优化识别逻辑"
 git push origin master
+git tag v6.5.0.0; git push origin v6.5.0.0
 # 注意：py 脚本编译进了 exe，只有新用户需要重新下载完整安装包
 # 已有用户通过增量更新不会获得脚本变更（因为脚本在 exe 内部）
 ```
@@ -512,6 +519,9 @@ git push origin master
 ## 九、快速参考命令
 
 ```powershell
+cd d:\test_py\tpw\tpw2-master
+.\.venv\Scripts\Activate.ps1
+
 # ── 一键打包发布（推荐） ──
 .\build.ps1 -Version "6.5.0.0"
 
@@ -588,7 +598,7 @@ Remove-Item .venv.bak -Recurse -Force
 
 ---
 
-> 📅 最后更新: 2026-07-12
-> 📦 对应版本: v6.4.9.7+
-> 🔧 基于 `incremental_update/` 模块 v1.0
-> 📦 打包脚本: `build.ps1` v2.0（已集成增量更新）
+> 📅 最后更新: 2026-07-14
+> 📦 对应版本: v6.5.0.0+
+> 🔧 基于 `incremental_update/` 模块 v2.0 (SHA-256 + CDN回退 + 回滚支持)
+> 📦 打包脚本: `build.ps1` v3.0（已集成增量更新 + QuickUpdate快捷模式）

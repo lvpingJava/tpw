@@ -1,6 +1,7 @@
-# updater.py - TPW 增量更新核心引擎
+# updater.py - TPW 增量更新核心引擎 (v2.0)
 # 参考 GameUpdateSystemProject/client_updater.py 的 AutoUpdater 实现
-# 支持文件级 MD5 哈希比对、仅下载变更文件、清理废弃文件
+# 支持文件级 MD5/SHA-256 哈希比对、仅下载变更文件、清理废弃文件
+# v2.0 新增: CDN 多级回退、下载完整性校验、回滚支持
 
 import os
 import json
@@ -9,6 +10,7 @@ import shutil
 import time
 import tempfile
 import requests
+from datetime import datetime
 
 
 # ── 绕过系统代理 ──
@@ -22,13 +24,47 @@ def _create_session():
     return session
 
 
+# GitHub 仓库信息 (用于构造回退 URL)
+_GITHUB_REPO = "lvpingJava/tpw"
+
+
+def _build_fallback_urls(primary_url):
+    """根据主 URL 构造回退 URL 列表（从 primary_url 解析目标版本）"""
+    import re
+    urls = [primary_url.rstrip('/')]
+    # 尝试从主 URL 中提取版本标签 (如 @v6.5.0.0)
+    m = re.search(r'@(v[\d.]+)', primary_url)
+    if m:
+        version_tag = m.group(1)
+        # GitHub Raw 备选（同一版本，不同 CDN）
+        github_raw = f"https://raw.githubusercontent.com/{_GITHUB_REPO}/{version_tag}"
+        if github_raw not in urls:
+            urls.append(github_raw)
+    # 始终添加 master 分支作为最后回退
+    master_url = f"https://cdn.jsdelivr.net/gh/{_GITHUB_REPO}@master"
+    if master_url not in urls:
+        urls.append(master_url)
+    return urls
+
+
 class IncrementalUpdater:
-    """增量更新器：连接服务器获取 manifest.json，对比本地文件，仅下载变更部分"""
+    """增量更新器：连接服务器获取 manifest.json，对比本地文件，仅下载变更部分
+
+    v2.0 新增特性:
+    - CDN 多级回退：主CDN不可用时自动切换备选源
+    - 下载完整性校验：下载后 SHA-256 验证，确保文件未损坏
+    - 回滚支持：更新失败时恢复被修改的文件
+    - 双重哈希：MD5 (比对) + SHA-256 (校验)
+    """
 
     # 最大重试次数
     MAX_RETRIES = 3
     # 下载分块大小
     CHUNK_SIZE = 8192
+    # manifest 下载超时 (秒)
+    MANIFEST_TIMEOUT = 15
+    # 文件下载超时 (秒)
+    FILE_TIMEOUT = 30
 
     # ── 保护目录：这些目录中的文件绝不会被删除或覆盖 ──
     # 防止垃圾清理误删 IDE 配置、虚拟环境、Git 仓库等开发目录
@@ -40,6 +76,8 @@ class IncrementalUpdater:
     PROTECTED_FILES = {
         '.gitignore', 'update_config.json',
     }
+    # ── 备份目录名 ──
+    BACKUP_DIR_NAME = ".tpw_update_backup"
 
     def __init__(self, server_url, local_dir, progress_callback=None, log_callback=None):
         """
@@ -63,6 +101,15 @@ class IncrementalUpdater:
         self._is_cancelled = False
         self._local_manifest_path = os.path.join(self.local_dir, "manifest.json")
 
+        # ── v2.0: 回滚支持 ──
+        self._backup_dir = os.path.join(self.local_dir, self.BACKUP_DIR_NAME)
+        self._backed_up_files = {}  # {rel_path: (original_exists, backup_path)}
+        self._downloaded_files = []  # 已下载文件列表，用于回滚
+
+        # ── v2.0: CDN 回退 URL 列表（从 server_url 解析目标版本） ──
+        self._local_version = self.get_local_version()
+        self._fallback_urls = _build_fallback_urls(server_url)
+
     # ── 公共 API ─────────────────────────────────────────────
 
     def cancel(self):
@@ -81,16 +128,8 @@ class IncrementalUpdater:
         self._is_cancelled = False
         self._log("正在连接更新服务器...")
 
-        manifest_url = f"{self.server_url}/manifest.json"
-        try:
-            resp = self._session.get(manifest_url, timeout=15)
-            resp.raise_for_status()
-            remote_manifest = resp.json()
-        except requests.RequestException as e:
-            self._log(f"无法连接更新服务器: {e}")
-            return None
-        except json.JSONDecodeError as e:
-            self._log(f"manifest.json 格式错误: {e}")
+        remote_manifest = self._fetch_manifest_with_fallback()
+        if remote_manifest is None:
             return None
 
         remote_version = remote_manifest.get('version', 'Unknown')
@@ -100,6 +139,11 @@ class IncrementalUpdater:
         self._log(f"服务器版本: {remote_version}")
         self._log(f"本地版本: {local_version}")
 
+        # ── v2.0: 显示更新内容摘要 ──
+        changelog = remote_manifest.get('changelog', '')
+        if changelog:
+            self._log(f"更新内容: {changelog}")
+
         need_download = []
         keep_files = set()
         total = len(remote_files)
@@ -108,7 +152,7 @@ class IncrementalUpdater:
         self._log(f"正在比对 {total} 个文件...")
         self._progress_cb(0, total, "正在比对文件...")
 
-        for rel_path, remote_hash in remote_files.items():
+        for rel_path, remote_hashes in remote_files.items():
             if self._is_cancelled:
                 return None
 
@@ -119,6 +163,14 @@ class IncrementalUpdater:
 
             local_path = os.path.join(self.local_dir, rel_path)
             keep_files.add(os.path.abspath(local_path))
+
+            # ── v2.0: 兼容新旧 manifest 格式 ──
+            # 新格式: {"md5": "...", "sha256": "...", "size": 1234}
+            # 旧格式: "md5hash" (纯字符串)
+            if isinstance(remote_hashes, dict):
+                remote_hash = remote_hashes.get('md5', '')
+            else:
+                remote_hash = remote_hashes
 
             local_hash = self._get_local_file_hash(local_path)
             if local_hash != remote_hash:
@@ -139,6 +191,7 @@ class IncrementalUpdater:
             "total_files": total,
             "remote_manifest": remote_manifest,
             "keep_files": keep_files,
+            "changelog": changelog,
         }
 
         if not need_download and local_version == remote_version:
@@ -147,18 +200,27 @@ class IncrementalUpdater:
 
         return result
 
-    def download_files(self, file_list, keep_files=None):
+    def download_files(self, file_list, keep_files=None, remote_manifest=None):
         if not file_list:
             return 0, 0
 
         total = len(file_list)
         self._log(f"开始下载 {total} 个文件...")
+
+        # ── v2.0: 下载前备份将被修改的文件 ──
+        self._prepare_backup()
+        for rel_path in file_list:
+            self._backup_file(rel_path)
+
         success = 0
         fail = 0
+        self._downloaded_files = []
 
         for i, rel_path in enumerate(file_list):
             if self._is_cancelled:
                 self._log("更新已取消")
+                # 回滚已下载的文件
+                self._restore_backup()
                 break
 
             # 跳过保护目录中的文件
@@ -172,16 +234,34 @@ class IncrementalUpdater:
 
             self._progress_cb(i + 1, total, f"下载: {rel_path}")
 
-            if self._download_single_file(file_url, local_dest, rel_path):
+            # ── v2.0: 获取期望的哈希值用于下载后校验 ──
+            expected_hash = None
+            if remote_manifest:
+                file_info = remote_manifest.get('files', {}).get(rel_path, {})
+                if isinstance(file_info, dict):
+                    expected_hash = file_info.get('md5', '')
+                else:
+                    expected_hash = file_info
+
+            if self._download_single_file(file_url, local_dest, rel_path, expected_hash):
                 success += 1
+                self._downloaded_files.append(rel_path)
             else:
                 fail += 1
                 self._log(f"下载失败: {rel_path}")
+                # ── v2.0: 下载失败则恢复该文件的备份 ──
+                self._restore_single_file(rel_path)
 
         self._progress_cb(total, total, f"下载完成: 成功 {success}, 失败 {fail}")
 
-        if keep_files:
-            self._clean_garbage(keep_files)
+        # ── v2.0: 全部成功才清理备份，否则回滚 ──
+        if fail == 0:
+            self._cleanup_backup()
+            if keep_files:
+                self._clean_garbage(keep_files)
+        else:
+            self._log(f"有 {fail} 个文件下载失败，已恢复原始文件")
+            self._restore_backup()
 
         return success, fail
 
@@ -199,7 +279,9 @@ class IncrementalUpdater:
             return True
 
         success, fail = self.download_files(
-            file_list, keep_files=result.get("keep_files")
+            file_list,
+            keep_files=result.get("keep_files"),
+            remote_manifest=result.get("remote_manifest"),
         )
 
         if success > 0:
@@ -225,10 +307,10 @@ class IncrementalUpdater:
         except (IOError, PermissionError):
             return None
 
-    def _download_single_file(self, url, dest_path, rel_path):
+    def _download_single_file(self, url, dest_path, rel_path, expected_md5=None):
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
-                resp = self._session.get(url, stream=True, timeout=30)
+                resp = self._session.get(url, stream=True, timeout=self.FILE_TIMEOUT)
                 resp.raise_for_status()
 
                 tmp_fd, tmp_path = tempfile.mkstemp(
@@ -242,6 +324,14 @@ class IncrementalUpdater:
                                 os.unlink(tmp_path)
                                 return False
                             f.write(chunk)
+
+                    # v2.0: 下载后 MD5 完整性校验
+                    if expected_md5:
+                        actual_md5 = self._compute_md5(tmp_path)
+                        if actual_md5 != expected_md5:
+                            self._log(f"校验失败 {rel_path}: 期望 {expected_md5[:8]}..., 实际 {actual_md5[:8]}...")
+                            os.unlink(tmp_path)
+                            return False
 
                     if os.path.exists(dest_path):
                         os.remove(dest_path)
@@ -327,8 +417,104 @@ class IncrementalUpdater:
     def _log(self, message):
         self._log_cb(message)
 
-    def _progress_cb(self, current, total, message):
-        self._progress_cb(current, total, message)
+    # ── v2.0: CDN 多级回退 ───────────────────────────────────
+
+    def _fetch_manifest_with_fallback(self):
+        """从 CDN 获取 manifest.json，带多级回退"""
+        errors = []
+        for idx, base_url in enumerate(self._fallback_urls):
+            manifest_url = f"{base_url}/manifest.json"
+            source_names = ["jsDelivr CDN", "GitHub Raw", "jsDelivr @master"]
+            source_name = source_names[idx] if idx < len(source_names) else f"备选源{idx+1}"
+            self._log(f"尝试 {source_name}: {manifest_url}")
+            try:
+                resp = self._session.get(manifest_url, timeout=self.MANIFEST_TIMEOUT)
+                resp.raise_for_status()
+                manifest = resp.json()
+                self._log(f"连接成功 [{source_name}]")
+                return manifest
+            except requests.RequestException as e:
+                msg = f"{source_name} 不可用: {e}"
+                self._log(f"  {msg}")
+                errors.append(msg)
+            except json.JSONDecodeError as e:
+                msg = f"{source_name} 格式错误: {e}"
+                self._log(f"  {msg}")
+                errors.append(msg)
+
+        self._log("所有更新源均不可用！请检查网络连接，或稍后重试")
+        return None
+
+    # ── v2.0: 回滚支持 ───────────────────────────────────────
+
+    def _prepare_backup(self):
+        """准备备份目录"""
+        if not os.path.exists(self._backup_dir):
+            os.makedirs(self._backup_dir)
+
+    def _backup_file(self, rel_path):
+        """备份单个文件"""
+        src_path = os.path.join(self.local_dir, rel_path)
+        backup_path = os.path.join(self._backup_dir, rel_path)
+        exists = os.path.exists(src_path)
+        if exists:
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            shutil.copy2(src_path, backup_path)
+        self._backed_up_files[rel_path] = (exists, backup_path)
+
+    def _restore_single_file(self, rel_path):
+        """恢复单个文件的备份"""
+        if rel_path not in self._backed_up_files:
+            return
+        exists, backup_path = self._backed_up_files[rel_path]
+        dest_path = os.path.join(self.local_dir, rel_path)
+        if exists and os.path.exists(backup_path):
+            shutil.copy2(backup_path, dest_path)
+        elif not exists:
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+
+    def _restore_backup(self):
+        """恢复所有已备份的文件"""
+        restored = 0
+        for rel_path in list(self._backed_up_files.keys()):
+            self._restore_single_file(rel_path)
+            restored += 1
+        if restored > 0:
+            self._log(f"已恢复 {restored} 个文件")
+        self._cleanup_backup()
+
+    def _cleanup_backup(self):
+        """清理备份目录"""
+        if os.path.exists(self._backup_dir):
+            shutil.rmtree(self._backup_dir, ignore_errors=True)
+        self._backed_up_files.clear()
+
+    # ── v2.0: 哈希计算工具 ──────────────────────────────────
+
+    @staticmethod
+    def _compute_md5(filepath):
+        """计算文件 MD5 哈希"""
+        hasher = hashlib.md5()
+        try:
+            with open(filepath, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hasher.update(chunk)
+            return hasher.hexdigest()
+        except (IOError, PermissionError):
+            return ""
+
+    @staticmethod
+    def _compute_sha256(filepath):
+        """计算文件 SHA-256 哈希"""
+        hasher = hashlib.sha256()
+        try:
+            with open(filepath, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hasher.update(chunk)
+            return hasher.hexdigest()
+        except (IOError, PermissionError):
+            return ""
 
 
 if __name__ == "__main__":

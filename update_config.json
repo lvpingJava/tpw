@@ -7,6 +7,7 @@
     "server_url":  "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.5.0.0",
     "_server_url_note":  "jsDelivr CDN 地址。@v{版本号} 标签不可变，无缓存问题。每次发布需创建对应 tag。",
     "version":  "6.5.0.0",
+    "changelog":  "",
     "version_file":  "models/tpwVer.txt",
     "include_dirs":  [
                          "配置",

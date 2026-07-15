@@ -167,7 +167,7 @@ class UpdateDialog(QDialog):
         self.txt_log.setStyleSheet(
             "background-color: #fafafa; border: 1px solid #ddd; padding: 6px;"
         )
-        self.txt_log.setMaximumBlockCount(500)
+        self.txt_log.document().setMaximumBlockCount(500)
         layout.addWidget(self.txt_log, stretch=1)
 
         # ── 按钮区域 ──

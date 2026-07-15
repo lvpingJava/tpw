@@ -72,5 +72,7 @@
                          "pyImgMain.py",
                          "pyOcrMain.py",
                          "YOLO.py"
-                     ]
+                     ],
+    "_root_binaries_note":  "根目录二进制文件 (exe/dll)。默认空，因为 exe 超过 50MB 不适合 CDN。如确需增量更新 exe，可添加 '躺平王服务端.exe' 等",
+    "root_binaries":  []
 }

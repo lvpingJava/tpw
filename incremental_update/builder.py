@@ -65,8 +65,8 @@ class ManifestBuilder:
 
     def build(self, version, include_dirs=None, include_globs=None,
               exclude_patterns=None, output_path=None, changelog="",
-              root_scripts=None):
-        """构建 manifest.json (v2.0 格式)
+              root_scripts=None, root_binaries=None):
+        """构建 manifest.json (v2.1 格式)
 
         v2.0 文件条目格式: {"md5": "...", "sha256": "..."}
         旧格式兼容: "md5hash" (纯字符串) —— updater.py 同时支持两种格式
@@ -137,6 +137,18 @@ class ManifestBuilder:
                     print(f"  [{file_hashes['md5'][:8]}] {script_name}")
                     total += 1
 
+        # 根目录关键二进制文件（exe/dll，默认不包含 — 大文件不适合 CDN 增量更新）
+        if root_binaries is None:
+            root_binaries = []  # 默认空，避免 CDN 超时
+        for bin_name in root_binaries:
+            bin_path = os.path.join(self.source_root, bin_name)
+            if os.path.isfile(bin_path) and bin_name not in manifest["files"]:
+                file_hashes = self._calculate_file_hash(bin_path)
+                if file_hashes:
+                    manifest["files"][bin_name] = file_hashes
+                    print(f"  [{file_hashes['md5'][:8]}] {bin_name} (二进制)")
+                    total += 1
+
         if output_path is None:
             output_path = os.path.join(self.source_root, "manifest.json")
 
@@ -184,6 +196,7 @@ def build_from_config(config_path=None):
         exclude_patterns=config.get("exclude_patterns"),
         changelog=config.get("changelog", ""),
         root_scripts=config.get("root_scripts"),
+        root_binaries=config.get("root_binaries"),
     )
 
 

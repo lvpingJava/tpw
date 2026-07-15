@@ -63,8 +63,11 @@ class IncrementalUpdater:
     CHUNK_SIZE = 8192
     # manifest 下载超时 (秒)
     MANIFEST_TIMEOUT = 15
-    # 文件下载超时 (秒)
-    FILE_TIMEOUT = 30
+    # 文件下载超时 (秒) — 根据文件大小自适应
+    FILE_TIMEOUT_MIN = 30
+    FILE_TIMEOUT_MAX = 300
+    # 大文件阈值 (字节)，超过此值使用更长超时
+    LARGE_FILE_THRESHOLD = 5 * 1024 * 1024  # 5MB
 
     # ── 保护目录：这些目录中的文件绝不会被删除或覆盖 ──
     # 防止垃圾清理误删 IDE 配置、虚拟环境、Git 仓库等开发目录
@@ -109,6 +112,8 @@ class IncrementalUpdater:
         # ── v2.0: CDN 回退 URL 列表（从 server_url 解析目标版本） ──
         self._local_version = self.get_local_version()
         self._fallback_urls = _build_fallback_urls(server_url)
+        # 记录实际使用的 CDN URL（manifest 获取成功后更新）
+        self._active_base_url = server_url.rstrip('/')
 
     # ── 公共 API ─────────────────────────────────────────────
 
@@ -228,7 +233,7 @@ class IncrementalUpdater:
                 self._log(f"跳过受保护文件: {rel_path}")
                 continue
 
-            file_url = f"{self.server_url}/{rel_path}"
+            file_url = f"{self._active_base_url}/{rel_path}"
             local_dest = os.path.join(self.local_dir, rel_path)
             os.makedirs(os.path.dirname(local_dest), exist_ok=True)
 
@@ -243,7 +248,7 @@ class IncrementalUpdater:
                 else:
                     expected_hash = file_info
 
-            if self._download_single_file(file_url, local_dest, rel_path, expected_hash):
+            if self._download_with_fallback(rel_path, local_dest, expected_hash):
                 success += 1
                 self._downloaded_files.append(rel_path)
             else:
@@ -293,6 +298,22 @@ class IncrementalUpdater:
 
         return fail == 0
 
+    # ── v2.1: CDN 多级回退文件下载 ──────────────────────────
+
+    def _download_with_fallback(self, rel_path, dest_path, expected_md5=None):
+        """带 CDN 回退的文件下载：先尝试活跃 URL，失败后尝试备选源"""
+        try_urls = [self._active_base_url]
+        for url in self._fallback_urls:
+            if url != self._active_base_url:
+                try_urls.append(url)
+
+        for base_url in try_urls:
+            file_url = f"{base_url}/{rel_path}"
+            if self._download_single_file(file_url, dest_path, rel_path, expected_md5):
+                return True
+
+        return False
+
     # ── 内部方法 ─────────────────────────────────────────────
 
     def _get_local_file_hash(self, filepath):
@@ -309,8 +330,10 @@ class IncrementalUpdater:
 
     def _download_single_file(self, url, dest_path, rel_path, expected_md5=None):
         for attempt in range(1, self.MAX_RETRIES + 1):
+            # ★ v2.1: 自适应超时 — 最后一次重试用更长超时，应对大文件
+            timeout = self.FILE_TIMEOUT_MAX if attempt == self.MAX_RETRIES else self.FILE_TIMEOUT_MIN
             try:
-                resp = self._session.get(url, stream=True, timeout=self.FILE_TIMEOUT)
+                resp = self._session.get(url, stream=True, timeout=timeout)
                 resp.raise_for_status()
 
                 tmp_fd, tmp_path = tempfile.mkstemp(
@@ -420,7 +443,9 @@ class IncrementalUpdater:
     # ── v2.0: CDN 多级回退 ───────────────────────────────────
 
     def _fetch_manifest_with_fallback(self):
-        """从 CDN 获取 manifest.json，带多级回退"""
+        """从 CDN 获取 manifest.json，带多级回退。
+        成功时会将 self._active_base_url 更新为实际可用的 CDN URL，
+        后续文件下载将使用同一 CDN 源。"""
         errors = []
         for idx, base_url in enumerate(self._fallback_urls):
             manifest_url = f"{base_url}/manifest.json"
@@ -432,6 +457,9 @@ class IncrementalUpdater:
                 resp.raise_for_status()
                 manifest = resp.json()
                 self._log(f"连接成功 [{source_name}]")
+                # ★ 关键修复: 将实际可用的 CDN URL 记录为活跃源，后续文件下载使用同一源
+                self._active_base_url = base_url
+                self._log(f"文件下载源切换为: {base_url}")
                 return manifest
             except requests.RequestException as e:
                 msg = f"{source_name} 不可用: {e}"

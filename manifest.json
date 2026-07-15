@@ -1,6 +1,6 @@
 {
-    "version": "6.6.0.2",
-    "build_time": "2026-07-15 17:27:06",
+    "version": "6.6.0.3",
+    "build_time": "2026-07-15 18:10:09",
     "changelog": "",
     "files": {
         "配置/21咕咕15射线310主卡.txt": {
@@ -16868,8 +16868,8 @@
             "sha256": "45f17fb10bac2f22e65ff520e07c5106d850d57ecf06af6e94e5065c1b4b8775"
         },
         "models/tpwVer.txt": {
-            "md5": "1f0909620899653aab48669e2a311be2",
-            "sha256": "1bd81ac66e8c6ec9597da388aab75005ed3ef870b0ff4ae8d62afe9331a3bcda"
+            "md5": "2be490cd612aa784f3689e94ea9f0205",
+            "sha256": "1afd22997b2827e31300ac590a277229e7c70c1133903f71ee2dece33741cdeb"
         },
         "models/update.png": {
             "md5": "a0250fd568a0836e9bde1ea186c8894b",

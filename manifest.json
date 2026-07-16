@@ -1,6 +1,6 @@
 {
-    "version": "6.6.0.7",
-    "build_time": "2026-07-16 10:43:08",
+    "version": "6.6.0.8",
+    "build_time": "2026-07-16 11:14:36",
     "changelog": "",
     "files": {
         "配置/21咕咕15射线310主卡.txt": {
@@ -16868,8 +16868,8 @@
             "sha256": "45f17fb10bac2f22e65ff520e07c5106d850d57ecf06af6e94e5065c1b4b8775"
         },
         "models/tpwVer.txt": {
-            "md5": "09aeb9502af9a01105eb12c5735b7a28",
-            "sha256": "d053271a4e8e0cfaae045af981cebec2e85f1110cc1b93b8fc8dbfdf579dd810"
+            "md5": "63c6f15f480ceda50c2746a3555019d5",
+            "sha256": "b5f7c223a13a35b142c61bae152b6793e6abd97b41b6eebe0dab6cb105e56e43"
         },
         "models/update.png": {
             "md5": "a0250fd568a0836e9bde1ea186c8894b",
@@ -17038,38 +17038,6 @@
         "wxauto/wxauto/__init__.py": {
             "md5": "be29e8466e19f732b8e0eba3ed211aa0",
             "sha256": "b24e7a75c67205064c28e318b34aeb53075228ac559c56fd5c4062c9a22e0f70"
-        },
-        "wxauto/微信图片/微信图片_20240506214014121422.jpg": {
-            "md5": "7c27404df6e82baecac2ca70cd5be90d",
-            "sha256": "dd197ad601698873746c6f22f9d9b98bb54c6f23794fb81aeee1dbbec878b970"
-        },
-        "wxauto/微信图片/微信图片_20240506214016170253.jpg": {
-            "md5": "a765de54e2b6462dc39f053c84066635",
-            "sha256": "68ac30522f457bc8c340707c6fcdbebdc36d42a4fcb812097a9ba66b92269d30"
-        },
-        "wxauto/微信图片/微信图片_20240506214018119153.jpg": {
-            "md5": "5dd71e2ca1bd61259cbe09cb47e28276",
-            "sha256": "236eec0af31090fc93b7060f71c3e53f4384ca41f7991ef08a742347dffe81aa"
-        },
-        "wxauto/微信图片/微信图片_20240506214019902283.jpg": {
-            "md5": "5dd71e2ca1bd61259cbe09cb47e28276",
-            "sha256": "236eec0af31090fc93b7060f71c3e53f4384ca41f7991ef08a742347dffe81aa"
-        },
-        "wxauto/微信图片/微信图片_20240506232831237863.jpg": {
-            "md5": "6ef4b458ff8c9f1b19451c01bc44c271",
-            "sha256": "16222b3bdbbe544f0e6f82971b666da2f0b2637fb2f4dff0e3d0603dc7023402"
-        },
-        "wxauto/微信图片/微信图片_20240506233606707653.jpg": {
-            "md5": "6ef4b458ff8c9f1b19451c01bc44c271",
-            "sha256": "16222b3bdbbe544f0e6f82971b666da2f0b2637fb2f4dff0e3d0603dc7023402"
-        },
-        "wxauto/微信图片/微信图片_20240506233709788097.jpg": {
-            "md5": "6ef4b458ff8c9f1b19451c01bc44c271",
-            "sha256": "16222b3bdbbe544f0e6f82971b666da2f0b2637fb2f4dff0e3d0603dc7023402"
-        },
-        "wxauto/微信图片/微信图片_20240507212226398999.jpg": {
-            "md5": "6ef4b458ff8c9f1b19451c01bc44c271",
-            "sha256": "16222b3bdbbe544f0e6f82971b666da2f0b2637fb2f4dff0e3d0603dc7023402"
         },
         "other/op_x64.dll": {
             "md5": "03843de25e09ae78139d9ca36ec7e804",

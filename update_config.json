@@ -1,12 +1,12 @@
-﻿{
+{
     "_comment":  "TPW 增量更新配置文件",
     "_usage":  "builder.py 和 tpw_server.py 都会读取此配置",
     "_github_repo":  "https://github.com/lvpingJava/tpw.git",
     "_github_account":  "lvpingJava",
     "_github_email":  "827886863@qq.com",
-    "server_url":  "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.7",
+    "server_url":  "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.8",
     "_server_url_note":  "jsDelivr CDN 地址。@v{版本号} 标签不可变，无缓存问题。每次发布需创建对应 tag。",
-    "version":  "6.6.0.7",
+    "version":  "6.6.0.8",
     "changelog":  "",
     "version_file":  "models/tpwVer.txt",
     "include_dirs":  [

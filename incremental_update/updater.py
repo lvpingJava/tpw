@@ -359,12 +359,42 @@ class IncrementalUpdater:
             return None
 
     def _download_single_file(self, url, dest_path, rel_path, expected_md5=None):
+        """下载单个文件，带重试。
+
+        ★ v2.3: 阻止 jsDelivr → raw.githubusercontent.com 重定向。
+        jsDelivr 对新 tag 的文件可能返回 302 跳转到 GitHub Raw，国内直连极不稳定。
+        此处手动控制重定向链，遇到 raw 跳转时主动中断，触发重试等待 CDN 缓存暖机。
+        """
         for attempt in range(1, self.MAX_RETRIES + 1):
-            # ★ v2.1: 自适应超时 — 最后一次重试用更长超时，应对大文件
             timeout = self.FILE_TIMEOUT_MAX if attempt == self.MAX_RETRIES else self.FILE_TIMEOUT_MIN
             try:
-                resp = self._session.get(url, stream=True, timeout=timeout)
-                resp.raise_for_status()
+                # ★ v2.3: allow_redirects=False，手动控制重定向链
+                current_url = url
+                redirect_chain = 0
+                max_redirects = 5
+
+                while redirect_chain <= max_redirects:
+                    resp = self._session.get(current_url, stream=True,
+                                             timeout=timeout, allow_redirects=False)
+
+                    # 处理重定向
+                    if resp.status_code in (301, 302, 303, 307, 308):
+                        location = resp.headers.get('Location', '')
+                        # ★ 关键：阻止跳转到 raw.githubusercontent.com
+                        if 'raw.githubusercontent.com' in location:
+                            raise requests.RequestException(
+                                f"CDN 重定向至 raw.githubusercontent.com (已阻止，等待 CDN 缓存暖机)"
+                            )
+                        current_url = location
+                        redirect_chain += 1
+                        continue
+
+                    # 非重定向响应，检查状态码
+                    resp.raise_for_status()
+                    break
+
+                if redirect_chain > max_redirects:
+                    raise requests.RequestException("重定向次数过多")
 
                 tmp_fd, tmp_path = tempfile.mkstemp(
                     dir=os.path.dirname(dest_path) or self.local_dir,
@@ -398,7 +428,7 @@ class IncrementalUpdater:
 
             except requests.RequestException as e:
                 if attempt < self.MAX_RETRIES:
-                    wait = attempt * 2
+                    wait = attempt * 3
                     self._log(f"重试 ({attempt}/{self.MAX_RETRIES}) {rel_path}: {e}, "
                               f"等待 {wait}s")
                     time.sleep(wait)

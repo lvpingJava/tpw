@@ -1,5 +1,7 @@
 # TPW 增量更新系统 - 完整操作手册
 
+> 📅 最后更新: 2026-07-14 ｜ 📦 适用版本: v6.6.0.5+
+
 ---
 
 ## 一、系统架构概览
@@ -8,16 +10,19 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                        开发者工作流                               │
 │                                                                 │
-│  修改资源文件 → 更新版本号 → 生成manifest.json → Git提交推送       │
+│  修改资源/代码 → build.ps1 -AutoTag 一键完成                      │
 │       │                                                         │
 │       ▼                                                         │
-│  GitHub仓库 (lvpingJava/tpw) ──→ jsDelivr CDN 自动同步           │
-│                                      │                          │
-│                                      ▼                          │
+│  GitHub仓库 (lvpingJava/tpw) + Git tag vX.X.X.X                 │
+│       │                                                         │
+│       ▼                                                         │
+│  jsDelivr CDN @vX.X.X.X (无缓存，tag 推送后 1-2 分钟生效)        │
+│       │                                                         │
+│       ▼                                                         │
 │                        用户端增量更新系统                          │
 │                                                                 │
 │  点击"更新" → 下载manifest.json → MD5比对 → 仅下载变更文件        │
-│                                → 清理废弃文件 → 重启生效           │
+│            → 清理废弃文件(安全模式) → 重启生效                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -26,117 +31,65 @@
 | 文件 | 职责 |
 |------|------|
 | `incremental_update/builder.py` | 清单构建器 v2.0：扫描目录，生成 manifest.json（MD5 + SHA-256 双重哈希） |
-| `incremental_update/updater.py` | 增量更新引擎 v2.0：CDN多级回退 + 下载校验 + 回滚支持 |
+| `incremental_update/updater.py` | 增量更新引擎 v2.2：CDN多级回退 + URL编码 + 下载校验 + 回滚 + 安全垃圾清理 |
 | `incremental_update/gui_updater.py` | PyQt5 更新对话框 v2.0：变更日志 + 重试 + 双进度条 |
 | `update_config.json` | 统一配置文件（服务器地址、版本号、扫描规则、更新日志） |
-| `tpw_server.py` | 主程序入口，`pushButton_7` 绑定 `incremental_update()` 方法 |
+| `build.ps1` | 一键自动化打包发布脚本 v3.1（集成 Nuitka + 增量更新 + AutoTag） |
+| `tpw_server.py` | 主程序入口，`pushButton_7` 绑定增量更新方法 |
 
 ### 核心原理
 
-> **文件级 MD5/SHA-256 双重哈希比对**，而非二进制 diff/patch。客户端对比本地文件哈希与服务器 manifest.json 中的哈希，不同的才下载。实现简单、健壮，无需维护二进制 patch 文件。
+> **文件级 MD5/SHA-256 双重哈希比对**，而非二进制 diff/patch。
 >
-> **v2.0 新特性**：
-> - **CDN 多级回退**：jsDelivr → GitHub Raw → jsDelivr @master，主CDN不可用时自动切换
-> - **下载完整性校验**：下载后 SHA-256 验证，确保文件未损坏或被篡改
-> - **回滚支持**：更新失败时自动恢复原始文件，保证程序可用
-> - **变更日志展示**：更新对话框显示本次更新内容
+> **v2.2 新特性**：
+> - **CDN 多级回退**：jsDelivr @v{version} → GitHub Raw @v{version} → jsDelivr @master
+> - **URL 中文编码**：自动对中文路径进行百分号编码，兼容各 CDN
+> - **安全垃圾清理**：仅清理 manifest 追踪目录，保护 Nuitka 系统目录（matplotlib/PyQt5/numpy 等）
+> - **下载完整性校验**：下载后 MD5 验证，临时文件+原子替换
+> - **回滚支持**：更新失败时自动恢复原始文件
+> - **自适应超时**：文件下载超时 30s→300s 自适应，大文件自动放宽
 
 ---
 
-## 二、开发者发布更新流程
+## 二、开发者发布更新流程（★ 当前版本）
 
-### 流程图
-
-```
-修改文件 → 修改版本号 → 构建清单 → 提交Git → 推送 → (打Tag) → CDN自动同步
-```
-
-### 第 1 步：修改资源文件
-
-在项目根目录下直接修改需要更新的文件，常见场景：
-
-| 场景 | 修改目录 | 示例 |
-|------|---------|------|
-| 更新手牌识别数据 | `手牌/` | 新增或替换 `.bmp` 模板图片 |
-| 更新场景图片 | `场景/` | 替换场景识别图 |
-| 更新配置 | `配置/` | 修改 DLL 或配置文件 |
-| 修改 Python 脚本 | 根目录 | 修改 `tpw_server.py`、`DmTool.py` 等 |
-| 更新 Web 服务 | `flaskr/` | 修改 `webServer.py` 等 |
-
-> **注意**：修改范围必须在 `update_config.json` 中 `include_dirs` 和 `root_scripts` 所列范围内，否则不会被纳入清单。
-
-### 第 2 步：更新版本号
-
-修改 `update_config.json` 中的 `version` 字段，建议使用 `主版本.次版本.修订.构建号` 格式：
-
-```json
-{
-    "version": "6.4.9.8",
-    ...
-}
-```
-
-> 版本号递增规则示例：`6.4.9.7` → `6.4.9.8`(小修复) 或 `6.5.0.0`(功能更新)
-
-### 第 3 步：生成清单文件 (manifest.json)
-
-打开终端，在项目根目录执行：
+### 一键发布
 
 ```powershell
-# 方式一：命令行指定版本号（推荐）
-py .\incremental_update\builder.py --version "6.4.9.8"
+# 完整发布（新版本号首次发布，含 Nuitka 编译）
+.\build.ps1 -Version "6.6.0.6" -CreateZip -AutoTag
 
-# 方式二：附带更新日志
-py .\incremental_update\builder.py --version "6.4.9.8" --changelog "更新手牌识别数据"
+# 快捷发布（仅改资源，同版本号，跳过编译）
+.\build.ps1 -Version "6.6.0.6" -QuickUpdate -AutoTag
 
-# 方式三：从 update_config.json 读取版本号
-py .\incremental_update\builder.py --config update_config.json
+# 试运行预览（不实际打包）
+.\build.ps1 -Version "6.6.0.6" -DryRun
 ```
 
-生成的 `manifest.json` 结构（v2.0 格式，包含 MD5 + SHA-256）：
+`-AutoTag` 自动完成 8 步：
 
-```json
-{
-    "version": "6.4.9.8",
-    "build_time": "2026-07-14 15:30:00",
-    "changelog": "更新手牌识别数据",
-    "files": {
-        "手牌/手牌1/某卡牌.bmp": {"md5": "a1b2c3d4...", "sha256": "e5f6g7h8..."},
-        "场景/某场景.bmp": {"md5": "12345678...", "sha256": "abcdef12..."},
-        ...
-    }
-}
+```
+Step 0  更新版本号 + 生成 manifest.json (MD5 + SHA-256)
+Step 1  清理旧构建产物
+Step 2  Nuitka 编译 → 躺平王服务端.exe（-QuickUpdate 跳过）
+Step 3  准备目标目录
+Step 4  复制 Nuitka 产物（-QuickUpdate 跳过）
+Step 5  复制资源文件 (手牌/场景/配置/OCR/增量更新系统)
+Step 6  完整性验证（manifest 内容检查 + CDN 地址检查）
+Step 7  创建 ZIP 分发包（-CreateZip / -QuickUpdate 时）
+Step 8  ★ git add → commit → push master → git tag v6.6.0.6 → push tag
 ```
 
-### 第 4 步：提交到 Git 并推送
+### 手动操作（不使用 -AutoTag 时）
 
 ```powershell
-git add -A
-git commit -m "更新手牌数据 v6.4.9.8"
+git add manifest.json update_config.json models/tpwVer.txt
+git commit -m "v6.6.0.6: 发布更新"
 git push origin master
+git tag v6.6.0.6 ; git push origin v6.6.0.6
 ```
 
-### 第 5 步（可选）：打版本 Tag
-
-如需精确版本管理或回滚：
-
-```powershell
-git tag v6.4.9.8
-git push origin v6.4.9.8
-```
-
-### 第 6 步：验证 CDN 同步
-
-推送后等待 1-2 分钟，在浏览器中验证：
-
-```
-https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
-```
-
-> jsDelivr 的缓存刷新时间通常为 **24 小时内**（首次访问后），新文件可能需等缓存过期。可以用 `purge.jsdelivr.net` 手动刷新：
-> ```
-> https://purge.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
-> ```
+> ⚠️ **Git tag 是必须的**：jsDelivr CDN 使用 `@v{版本号}` 路径，依赖 Git tag 存在。无 tag → CDN 404 → 回退到 @master（旧版本）。
 
 ---
 
@@ -203,14 +156,22 @@ https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
 
 ### 4.1 保护目录白名单（防止误删）
 
-> ⚠️ **这是经历过严重事故后加入的关键保护**：早期版本将 `local_dir` 设为项目根目录，垃圾清理器遍历删除时误删了 `.idea/`、`.git/`、`.venv/` 等开发目录。
+> ⚠️ **多层保护机制**：
+> 1. **PROTECTED_DIRS** — 开发工具目录 + Nuitka 系统目录，os.walk 直接跳过
+> 2. **_tracked_dirs** — 从 manifest 提取追踪目录，垃圾清理仅在这些目录内生效
+> 3. **PROTECTED_FILES** — 关键配置文件，绝不覆盖
 
-`updater.py` 中定义了以下保护规则（[updater.py](file:///d:/test_py/tpw/tpw2-master/incremental_update/updater.py#L35-L42)）：
+`updater.py` 中定义的保护规则：
 
 ```python
 PROTECTED_DIRS = {
+    # 开发工具目录
     '.idea', '.git', '.venv', 'venv', '__pycache__',
     '.qoder', '.trae', '.vscode',
+    # Nuitka 编译产物（不在 manifest 中，垃圾清理必须保护）
+    'matplotlib', 'PyQt5', 'numpy', 'cv2', 'PIL',
+    'contourpy', 'kiwisolver', 'markupsafe', 'psutil', 'zstandard',
+    'certifi', 'matplotlib.libs',
 }
 
 PROTECTED_FILES = {
@@ -260,8 +221,10 @@ def _create_session():
 
 ```json
 {
-    "server_url": "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master",
-    "version": "6.4.9.8",
+    "server_url": "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.5",
+    "version": "6.6.0.5",
+    "changelog": "",
+    "version_file": "models/tpwVer.txt",
 
     "include_dirs": [
         "配置", "手牌", "场景", "快速手牌", "暗月",
@@ -272,29 +235,34 @@ def _create_session():
     "include_globs": [
         "*.py", "*.txt", "*.dll", "*.exe",
         "*.bmp", "*.png", "*.gif", "*.tif", "*.jpg", "*.jpeg",
-        "*.json", "*.sql", "*.pem", "*.spec", "*.ui"
+        "*.json", "*.sql", "*.pem", "*.ui"
     ],
 
     "exclude_patterns": [
         "__pycache__", "*.pyc", "*.log", "*.zip",
         "临时*", ".git*", ".idea*", "*.md",
-        "test*.py"
+        "test*.py", "微信图片*"
     ],
 
     "root_scripts": [
         "tpw_server.py", "webServer.py", "DmTool.py", ...
-    ]
+    ],
+
+    "root_binaries": []
 }
 ```
 
 | 字段 | 说明 |
 |------|------|
-| `server_url` | CDN 地址，格式 `https://cdn.jsdelivr.net/gh/{用户}/{仓库}@{分支}` |
-| `version` | 当前版本号，**每次发布需手动更新** |
+| `server_url` | CDN 地址，格式 `@v{版本号}`（无缓存）。build.ps1 自动更新 |
+| `version` | 当前版本号，build.ps1 / builder.py 自动更新 |
+| `changelog` | 更新日志（通过 `-Changelog` 参数传入） |
+| `version_file` | 旧版本号文件路径（保持兼容） |
 | `include_dirs` | 要扫描的目录列表（相对于项目根目录） |
 | `include_globs` | 文件匹配模式（glob 语法） |
-| `exclude_patterns` | 排除模式，不会进入 manifest |
+| `exclude_patterns` | 排除模式（支持目录名匹配，如 `"微信图片*"`） |
 | `root_scripts` | 根目录下的关键 Python 脚本 |
+| `root_binaries` | 根目录 exe/dll（默认空，因文件过大不适合 CDN） |
 
 ### 新增目录/文件类型的步骤
 
@@ -389,89 +357,85 @@ def _create_session():
 
 ### 8.1 概述
 
-`build.ps1` 已与增量更新系统深度集成，**一条命令完成**：版本号更新 → 清单生成 → Nuitka 编译 → 资源复制 → 兼容性验证。
+`build.ps1` v3.1 与增量更新系统深度集成，**一条命令完成**：版本号更新 → 清单生成 → Nuitka 编译 → 资源复制 → ZIP → 验证 → **Git 自动发布**。
 
-### 8.2 打包命令
+### 8.2 命令速查
 
 ```powershell
-# 激活虚拟环境（必须先执行）
-cd d:\test_py\tpw\tpw2-master
-.\.venv\Scripts\Activate.ps1
+# ── 一键完整发布（新版本号首次，含编译+ZIP+自动Git） ──
+.\build.ps1 -Version "6.6.0.6" -CreateZip -AutoTag
 
-# ── 方式一：指定版本号一键打包（推荐） ──
-.\build.ps1 -Version "6.5.0.0"
+# ── 快捷资源更新（同版本号，跳过编译） ──
+.\build.ps1 -Version "6.6.0.6" -QuickUpdate -AutoTag
 
-# ── 方式二：快捷更新模式（跳过编译+自动ZIP，资源小更新用） ──
-.\build.ps1 -Version "6.5.0.0" -QuickUpdate
+# ── 试运行预览（仅生成清单） ──
+.\build.ps1 -Version "6.6.0.6" -DryRun
 
-# ── 方式三：附带更新日志 ──
-.\build.ps1 -Version "6.5.0.0" -QuickUpdate -Changelog "修复手牌识别Bug，新增暗月场景"
+# ── 附带更新日志 ──
+.\build.ps1 -Version "6.6.0.6" -CreateZip -AutoTag -Changelog "修复手牌识别Bug"
 
-# ── 方式四：从 update_config.json 读取版本 ──
+# ── 从配置文件读取版本号 ──
 .\build.ps1
-
-# ── 方式五：指定输出目录 ──
-.\build.ps1 -Version "6.5.0.0" -TargetDir "D:\test_py\tpw\打包\tpw6.5.0.0"
-
-# ── 方式六：仅重新打包，跳过清单生成（调试用） ──
-.\build.ps1 -Version "6.5.0.0" -SkipManifest
 ```
 
-### 8.3 脚本执行流程（7 步）
+### 8.3 完整参数列表
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `-Version` | string | 版本号，如 `"6.6.0.6"` |
+| `-TargetDir` | string | 自定义输出目录（默认自动推导） |
+| `-Changelog` | string | 更新日志 |
+| `-CreateZip` | switch | 自动创建 ZIP 分发包 |
+| `-AutoTag` | switch | 自动 git commit → push → tag → push tag |
+| `-QuickUpdate` | switch | 快捷模式：跳过编译 + 自动ZIP |
+| `-SkipNuitka` | switch | 跳过 Nuitka 编译 |
+| `-SkipManifest` | switch | 跳过清单生成（调试用） |
+| `-DryRun` | switch | 试运行：仅生成清单和配置 |
+
+### 8.4 脚本执行流程（8 步）
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  Step 0: 打包前准备                                               │
-│    ├─ 更新 update_config.json 版本号 + changelog                  │
+│    ├─ 更新 update_config.json 版本号 + server_url + changelog    │
 │    ├─ 更新 models/tpwVer.txt 版本号                               │
 │    └─ 运行 builder.py 生成 manifest.json（MD5 + SHA-256）         │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 1: 清理旧构建产物                                           │
 │    └─ 删除 tpw_server.dist/ 和 tpw_server.build/                  │
 ├──────────────────────────────────────────────────────────────────┤
-│  Step 2: Nuitka 编译打包 (约 3-8 分钟，可用 -SkipNuitka 跳过)     │
+│  Step 2: Nuitka 编译 (3-8 分钟，-QuickUpdate/-SkipNuitka 跳过)    │
 │    └─ Python 源码 → 躺平王服务端.exe (含所有依赖)                  │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 3: 准备目标目录                                             │
 │    └─ 创建/清空 D:\test_py\tpw\打包\tpw{版本号}                   │
 ├──────────────────────────────────────────────────────────────────┤
-│  Step 4: 复制 Nuitka 产物（-SkipNuitka 时跳过）                   │
-│    └─ exe + dll + pyd 文件                                        │
+│  Step 4: 复制 Nuitka 产物（-QuickUpdate/-SkipNuitka 时跳过）      │
+│    └─ exe + dll + pyd + Nuitka 系统目录                           │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 5: 复制资源文件 + 增量更新文件                               │
 │    ├─ 资源目录: 手牌/场景/配置/models/暗月/快速手牌                │
 │    ├─ OCR引擎: matplotlibes/matp.exe + models/                    │
 │    ├─ 原生DLL: other/*.dll + tess_model                           │
-│    ├─ ★ manifest.json     (增量更新清单 v2.0)                     │
-│    ├─ ★ update_config.json (CDN地址配置)                          │
+│    ├─ manifest.json     (增量更新清单)                           │
+│    ├─ update_config.json (CDN地址配置)                           │
 │    └─ 运行时目录: log/ + 临时卡牌/                                 │
 ├──────────────────────────────────────────────────────────────────┤
 │  Step 6: 打包后验证                                               │
 │    ├─ 关键文件存在性检查                                          │
-│    ├─ manifest.json 内容完整性检查 (SHA-256 自校验)               │
-│    ├─ update_config.json CDN 地址检查                             │
-│    └─ 显示下一步 Git 操作提示                                     │
+│    ├─ manifest.json 内容完整性检查                                 │
+│    └─ update_config.json CDN 地址检查                             │
 ├──────────────────────────────────────────────────────────────────┤
-│  Step 7: ZIP 分发（-CreateZip 或 -QuickUpdate 时）                │
-│    └─ 自动压缩打包目录为 .zip 文件                                │
+│  Step 7: ZIP 分发（-CreateZip / -QuickUpdate 时）                 │
+│    └─ 自动压缩为 .zip 分发包                                      │
+├──────────────────────────────────────────────────────────────────┤
+│  Step 8: ★ Git 自动发布（-AutoTag 时）                            │
+│    ├─ git add manifest.json update_config.json models/tpwVer.txt │
+│    ├─ git commit -m "v{版本号}: 发布更新"                         │
+│    ├─ git push origin master                                      │
+│    ├─ git tag v{版本号}                                           │
+│    └─ git push origin v{版本号}                                   │
 └──────────────────────────────────────────────────────────────────┘
-```
-
-### 8.4 打包后发布流程
-
-打包完成后脚本会提示下一步操作：
-
-```powershell
-# Step A: 提交清单到 Git（必须执行，这是增量更新的关键）
-git add manifest.json update_config.json models/tpwVer.txt
-git commit -m "v6.5.0.0: 发布更新"
-git push origin master
-
-# Step B: 刷新 CDN 缓存（浏览器打开）
-# https://purge.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
-
-# Step C: 将打包目录分发给新用户（首次安装用）
-# D:\test_py\tpw\打包\tpw6.5.0.0\  →  压缩后分发
 ```
 
 ### 8.5 打包产物与增量更新的关系
@@ -483,80 +447,52 @@ git push origin master
 | `update_config.json` | ✓ | ✓ | CDN 地址配置 |
 | `手牌/`, `场景/`, etc. | ✓ | ✓ | 资源文件，副本同时存在于打包目录和 CDN |
 
-> **关键理解**：用户端增量更新下载的文件来自 **CDN**（GitHub + jsDelivr），而非打包目录。打包目录仅用于首次安装分发。因此 `manifest.json` **必须推送到 GitHub**，否则用户端无法检测更新。
+> **关键理解**：用户端增量更新下载的文件来自 **CDN**（GitHub + jsDelivr），而非打包目录。因此 `manifest.json` **必须推送到 GitHub** 且 **Git tag 必须创建**，否则 CDN 无法定位文件。
 
 ### 8.6 典型工作场景
 
-**场景 1：更新手牌识别数据**
+**场景 1：更新手牌识别数据（资源变更）**
 ```powershell
-# 1. 修改手牌图片（替换/新增 .bmp 文件）
-# 2. 快捷打包（跳过编译，仅更新资源）
-.\build.ps1 -Version "6.4.9.8" -QuickUpdate -Changelog "更新手牌数据"
-# 3. 推送清单到 Git
-git add manifest.json update_config.json models/tpwVer.txt
-git commit -m "v6.4.9.8: 更新手牌数据"
-git push origin master
-git tag v6.4.9.8; git push origin v6.4.9.8
-# 4. 完成！已有用户点击「增量更新」仅下载变更的手牌图片
+# 修改手牌图片后，一键发布
+.\build.ps1 -Version "6.6.0.6" -QuickUpdate -AutoTag -Changelog "更新手牌数据"
+# 等 1-2 分钟后，用户点击「增量更新」仅下载变更的手牌图片
 ```
 
-**场景 2：只更新 Python 脚本（不涉及资源文件）**
+**场景 2：修改 Python 脚本（代码变更）**
 ```powershell
-# 修改 tpw_server.py / DmTool.py 等
-.\build.ps1 -Version "6.5.0.0"
-git add manifest.json update_config.json models/tpwVer.txt
-git commit -m "v6.5.0.0: 优化识别逻辑"
-git push origin master
-git tag v6.5.0.0; git push origin v6.5.0.0
-# 注意：py 脚本编译进了 exe，只有新用户需要重新下载完整安装包
-# 已有用户通过增量更新不会获得脚本变更（因为脚本在 exe 内部）
+# 修改 tpw_server.py / DmTool.py 等，完整编译
+.\build.ps1 -Version "6.6.0.6" -CreateZip -AutoTag -Changelog "优化识别逻辑"
+# 已有用户: 增量更新会推送 .py 文件，但 exe 不会自动重编译，需下载新 ZIP
+# 新用户: 下载 ZIP 获得最新 exe
 ```
 
-> ⚠️ **重要**：Python 脚本被 Nuitka 编译进 .exe，不在 manifest.json 的扫描范围内。修改 Python 代码后，增量更新**无法**推送脚本变更到已有用户——他们需要重新下载完整安装包。只有 `配置/`、`手牌/`、`场景/` 等资源目录的变更才能通过增量更新推送。
+> ⚠️ Python 脚本被 Nuitka 编译进 .exe，增量更新推送 .py 文件后**正在运行的 exe 不会自动重编译**。如需 exe 变更生效，用户必须下载完整 ZIP 重新安装。
 
 ---
 
 ## 九、快速参考命令
 
 ```powershell
-cd d:\test_py\tpw\tpw2-master
-.\.venv\Scripts\Activate.ps1
+# ── 一键完整发布（★ 推荐） ──
+.\build.ps1 -Version "6.6.0.6" -CreateZip -AutoTag
 
-# ── 一键打包发布（推荐） ──
-.\build.ps1 -Version "6.5.0.0"
+# ── 快捷资源更新 ──
+.\build.ps1 -Version "6.6.0.6" -QuickUpdate -AutoTag
 
-# ── 开发者操作 ──
+# ── 试运行 ──
+.\build.ps1 -Version "6.6.0.6" -DryRun
 
-# 仅生成清单（不打包）
-py .\incremental_update\builder.py --version "6.4.9.8"
-
-# 从配置文件读取并生成清单
-py .\incremental_update\builder.py --config update_config.json
-
-# Git 提交清单（打包后执行）
+# ── 手动操作（不使用 -AutoTag 时） ──
 git add manifest.json update_config.json models/tpwVer.txt
-git commit -m "v6.4.9.8: 更新手牌识别数据"
+git commit -m "v6.6.0.6: 发布更新"
 git push origin master
+git tag v6.6.0.6 ; git push origin v6.6.0.6
 
-# 打版本标签（可选）
-git tag v6.4.9.8
-git push origin v6.4.9.8
-
-# ── 验证操作 ──
-
-# 检查 CDN 是否同步（浏览器打开）
-# https://cdn.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
-
-# 手动刷新 CDN 缓存（浏览器打开）
-# https://purge.jsdelivr.net/gh/lvpingJava/tpw@master/manifest.json
+# ── 验证 CDN（浏览器打开） ──
+# https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.6/manifest.json
 
 # ── 紧急恢复 ──
-
-# 如果更新器误删了开发文件
 git checkout -- .
-
-# 如果 .venv 被破坏
-# 重建步骤见下文"venv 重建指南"
 ```
 
 ---
@@ -599,6 +535,6 @@ Remove-Item .venv.bak -Recurse -Force
 ---
 
 > 📅 最后更新: 2026-07-14
-> 📦 对应版本: v6.5.0.0+
-> 🔧 基于 `incremental_update/` 模块 v2.0 (SHA-256 + CDN回退 + 回滚支持)
-> 📦 打包脚本: `build.ps1` v3.0（已集成增量更新 + QuickUpdate快捷模式）
+> 📦 对应版本: v6.6.0.5+
+> 🔧 基于 `incremental_update/` 模块 v2.2 (URL编码 + 安全垃圾清理 + CDN回退 + 回滚支持)
+> 📦 打包脚本: `build.ps1` v3.1 (集成 AutoTag + QuickUpdate + DryRun)

@@ -10,6 +10,7 @@ import shutil
 import time
 import tempfile
 import requests
+import urllib.parse
 from datetime import datetime
 
 
@@ -315,14 +316,22 @@ class IncrementalUpdater:
     # ── v2.1: CDN 多级回退文件下载 ──────────────────────────
 
     def _download_with_fallback(self, rel_path, dest_path, expected_md5=None):
-        """带 CDN 回退的文件下载：先尝试活跃 URL，失败后尝试备选源"""
+        """带 CDN 回退的文件下载：先尝试活跃 URL，失败后尝试备选源
+        
+        ★ v2.2: 对路径中的中文字符进行 URL 编码，避免 CDN 服务器不识别。
+        """
+        # URL 编码每个路径段（正确处理中文目录/文件名）
+        encoded_path = '/'.join(
+            urllib.parse.quote(part, safe='') for part in rel_path.replace('\\', '/').split('/')
+        )
+
         try_urls = [self._active_base_url]
         for url in self._fallback_urls:
             if url != self._active_base_url:
                 try_urls.append(url)
 
         for base_url in try_urls:
-            file_url = f"{base_url}/{rel_path}"
+            file_url = f"{base_url}/{encoded_path}"
             if self._download_single_file(file_url, dest_path, rel_path, expected_md5):
                 return True
 

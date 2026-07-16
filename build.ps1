@@ -8,10 +8,12 @@
 #    .\build.ps1 -Version "6.5.0.0" -SkipNuitka     # 跳过编译（仅更新资源+清单）
 #    .\build.ps1 -Version "6.5.0.0" -CreateZip      # 打包后自动创建 ZIP 分发包
 #    .\build.ps1 -Version "6.5.0.0" -QuickUpdate    # 快捷模式: 跳过编译+自动ZIP (资源小更新用)
+#    .\build.ps1 -Version "6.5.0.0" -QuickUpdate -AutoTag  # ★ 一键发布: 打包+ZIP+自动Git提交推送+创建标签
 #    .\build.ps1 -Version "6.5.0.0" -Changelog "更新手牌数据"  # 附带更新日志
 #    .\build.ps1 -TargetDir "D:\test_py\tpw\打包\tpw6.5.0.0"  # 手动指定目标目录
+#    .\build.ps1 -Version "6.5.0.0" -DryRun          # 试运行: 仅生成清单不打包
 #
-#  完整流程: 更新版本 → 生成清单 → Nuitka编译 → 复制资源 → 验证 → ZIP打包 → 提示Git操作
+#  完整流程: 更新版本 → 生成清单 → Nuitka编译 → 复制资源 → 验证 → ZIP打包 → [AutoTag: Git提交推送+创建标签]
 # =============================================================================
 param(
     [string]$Version = "",                          # 版本号，如 "6.5.0.0"
@@ -20,7 +22,9 @@ param(
     [switch]$SkipManifest = $false,                 # 跳过清单生成步骤
     [switch]$SkipNuitka = $false,                   # 跳过 Nuitka 编译（仅更新资源文件）
     [switch]$CreateZip = $false,                    # 打包后自动创建 ZIP 分发包
-    [switch]$QuickUpdate = $false                   # 快捷模式: 跳过编译 + 自动ZIP（等同于 -SkipNuitka -CreateZip）
+    [switch]$QuickUpdate = $false,                  # 快捷模式: 跳过编译 + 自动ZIP（等同于 -SkipNuitka -CreateZip）
+    [switch]$DryRun = $false,                       # 试运行：仅生成清单和配置，不真正打包（用于预览）
+    [switch]$AutoTag = $false                       # 自动提交、推送 master 并创建/推送版本标签 v{Version}
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,10 +35,8 @@ $ConfigPath = Join-Path $ScriptDir "update_config.json"
 $VerFilePath = Join-Path $ScriptDir "models\tpwVer.txt"
 
 # ── QuickUpdate 快捷模式 ──
-if ($QuickUpdate) {
-    $SkipNuitka = $true
-    $CreateZip = $true
-}
+if ($QuickUpdate) { $SkipNuitka = $true; $CreateZip = $true }
+if ($DryRun)     { Write-Warn "试运行模式: 仅生成清单和配置，不进行实际打包"; $totalSteps = 1 }
 
 # ── 读取配置 ──────────────────────────────────────────────────
 $config = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -78,6 +80,8 @@ Write-Host "  输出目录: $TargetDir" -ForegroundColor Gray
 if ($SkipNuitka)   { Write-Host "  跳过编译: 是 (仅更新资源)" -ForegroundColor Magenta }
 if ($CreateZip)    { Write-Host "  自动ZIP: 是" -ForegroundColor Magenta }
 if ($QuickUpdate)  { Write-Host "  模式: 快捷更新 (跳过编译 + 自动ZIP)" -ForegroundColor Magenta }
+if ($AutoTag)      { Write-Host "  自动发布: 是 (提交→推送→创建标签)" -ForegroundColor Magenta }
+if ($DryRun)       { Write-Host "  试运行: 是 (不执行打包)" -ForegroundColor Magenta }
 if ($Changelog)    { Write-Host "  更新日志: $Changelog" -ForegroundColor Gray }
 Write-Host ""
 $totalSteps = 7
@@ -473,30 +477,136 @@ Write-Host "╔═════════════════════�
 Write-Host "║            发布更新到用户端                   ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Step A: 提交 Git 并推送 tag（tag 无 CDN 缓存问题）" -ForegroundColor White
-Write-Host "    git add manifest.json update_config.json models/tpwVer.txt" -ForegroundColor Gray
-Write-Host "    git commit -m ""v${Version}: 发布更新""" -ForegroundColor Gray
-Write-Host "    git push origin master" -ForegroundColor Gray
-Write-Host "    git tag v${Version} ; git push origin v${Version}" -ForegroundColor Gray
-Write-Host ""
-Write-Host "  Step B: 分发完整安装包给首次用户" -ForegroundColor White
-if ($CreateZip) {
-    Write-Host "    ZIP 已生成: D:\test_py\tpw\打包\tpw${Version}.zip" -ForegroundColor Gray
+
+if ($AutoTag) {
+    # ==================================================================
+    #  Step 8: 自动 Git 提交 + 推送 + 创建标签（-AutoTag）
+    # ==================================================================
+    Write-Step "[8/8] 自动 Git 发布 (提交 → 推送 → 创建标签 v${Version})..."
+
+    # git 的正常进度信息写入 stderr，会导致 ErrorActionPreference="Stop" 误判。
+    # 此段临时切换为 Continue 模式。
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
+    try {
+        # 8a. 检查 Git 用户配置
+        $gitName = (git config user.name 2>$null) -replace '\s+$',''
+        $gitEmail = (git config user.email 2>$null) -replace '\s+$',''
+        if (-not $gitName -or -not $gitEmail) {
+            Write-Fail "Git 用户信息未配置！请先执行:"
+            Write-Info '  git config --global user.name "Your Name"'
+            Write-Info '  git config --global user.email "your@email.com"'
+            exit 1
+        }
+        Write-OK "Git 用户: $gitName <$gitEmail>"
+
+        # 8b. 检查是否有未提交的变更
+        $gitStatus = git status --porcelain 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "Git 状态检查失败！当前目录可能不是 Git 仓库"
+            exit 1
+        }
+
+        $changedFiles = @($gitStatus | Where-Object { $_ -match '^\s*[MADRCU?]' })
+        if ($changedFiles.Count -eq 0) {
+            Write-Info "没有变更的文件，跳过提交步骤"
+        } else {
+            Write-Info "发现 $($changedFiles.Count) 个变更文件:"
+            foreach ($f in $changedFiles) { Write-Info "    $f" }
+
+            # 8c. 暂存关键文件
+            Write-Info "正在 git add ..."
+            git add manifest.json update_config.json models/tpwVer.txt 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warn "git add 部分文件失败，尝试添加所有变更..."
+                git add -A 2>&1 | Out-Null
+            }
+
+            # 8d. 提交
+            $commitMsg = "v${Version}: 发布更新"
+            if ($Changelog) { $commitMsg += " - $Changelog" }
+            Write-Info "正在提交: $commitMsg"
+            git commit -m $commitMsg 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warn "git commit 可能没有新内容或已提交"
+            } else {
+                Write-OK "提交成功"
+            }
+        }
+
+        # 8e. 推送到 GitHub
+        Write-Info "正在推送 master 到 GitHub ..."
+        $pushResult = git push origin master 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "Git 推送失败！请检查网络和仓库权限"
+            Write-Info "$pushResult"
+            Write-Warn "你可以稍后手动执行: git push origin master"
+        } else {
+            Write-OK "master 已推送到 GitHub"
+        }
+
+        # 8f. 创建并推送版本标签 (★ 关键: jsDelivr CDN 依赖此标签)
+        Write-Info "正在创建版本标签 v${Version} ..."
+        $existingTag = git tag -l "v${Version}" 2>$null
+        if ($existingTag) {
+            Write-Warn "标签 v${Version} 已存在，删除旧标签后重新创建..."
+            git tag -d "v${Version}" 2>&1 | Out-Null
+            git push origin ":refs/tags/v${Version}" 2>&1 | Out-Null
+        }
+
+        git tag "v${Version}" 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "创建标签 v${Version} 失败！"
+        } else {
+            Write-OK "标签 v${Version} 已创建"
+            Write-Info "正在推送标签 v${Version} 到 GitHub ..."
+            $tagPushResult = git push origin "v${Version}" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Fail "标签推送失败！"
+                Write-Info "$tagPushResult"
+                Write-Warn "你可以稍后手动执行: git push origin v${Version}"
+            } else {
+                Write-OK "标签 v${Version} 已推送到 GitHub"
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+
+    Write-Host ""
+    Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║         一键发布完成！                       ║" -ForegroundColor Green
+    Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  CDN 地址: https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v${Version}" -ForegroundColor Cyan
+    Write-Host "  (jsDelivr 约 1-2 分钟后同步新标签，用户即可增量更新)" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  用户端更新体验:" -ForegroundColor White
+    Write-Host "    已有用户 → 点击「增量更新」仅下载变更文件" -ForegroundColor Gray
+    if ($CreateZip) {
+        Write-Host "    首次用户 → 下载: D:\test_py\tpw\打包\tpw${Version}.zip" -ForegroundColor Gray
+    }
 } else {
-    Write-Host "    手动压缩: $TargetDir  (或下次使用 -CreateZip 自动创建)" -ForegroundColor Gray
+    # ── 未启用 AutoTag：显示手动操作提示 ──
+    Write-Host "  Step A: 提交 Git 并推送 tag（tag 无 CDN 缓存问题）" -ForegroundColor White
+    Write-Host "    git add manifest.json update_config.json models/tpwVer.txt" -ForegroundColor Gray
+    Write-Host "    git commit -m ""v${Version}: 发布更新""" -ForegroundColor Gray
+    Write-Host "    git push origin master" -ForegroundColor Gray
+    Write-Host "    git tag v${Version} ; git push origin v${Version}" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  ★ 提示: 下次使用 -AutoTag 一键完成以上全部步骤" -ForegroundColor Yellow
+    Write-Host "    .\build.ps1 -Version ""${Version}"" -QuickUpdate -AutoTag" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Step B: 分发完整安装包给首次用户" -ForegroundColor White
+    if ($CreateZip) {
+        Write-Host "    ZIP 已生成: D:\test_py\tpw\打包\tpw${Version}.zip" -ForegroundColor Gray
+    } else {
+        Write-Host "    手动压缩: $TargetDir  (或下次使用 -CreateZip 自动创建)" -ForegroundColor Gray
+    }
+    Write-Host ""
+    Write-Host "  Step C: 已有用户点击「增量更新」仅下载变更文件" -ForegroundColor White
+    Write-Host "    无需重新下载完整安装包" -ForegroundColor Gray
+    Write-Host ""
 }
-Write-Host ""
-Write-Host "  Step C: 已有用户点击「增量更新」仅下载变更文件" -ForegroundColor White
-Write-Host "    无需重新下载完整安装包" -ForegroundColor Gray
-Write-Host ""
-Write-Host "  ── 快捷命令 ──" -ForegroundColor Cyan
-Write-Host "  # 资源文件小更新 (快捷模式，跳过编译+自动ZIP):" -ForegroundColor Gray
-Write-Host "  .\build.ps1 -Version ""${Version}"" -QuickUpdate" -ForegroundColor Gray
-Write-Host "  # 资源文件更新 (跳过编译):" -ForegroundColor Gray
-Write-Host "  .\build.ps1 -Version ""${Version}"" -SkipNuitka -CreateZip" -ForegroundColor Gray
-Write-Host "  # 完整打包 + 自动 ZIP:" -ForegroundColor Gray
-Write-Host "  .\build.ps1 -Version ""${Version}"" -CreateZip" -ForegroundColor Gray
-Write-Host "  # 附带更新日志:" -ForegroundColor Gray
-Write-Host "  .\build.ps1 -Version ""${Version}"" -QuickUpdate -Changelog ""修复手牌识别 Bug""" -ForegroundColor Gray
-Write-Host ""
 

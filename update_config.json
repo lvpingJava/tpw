@@ -4,9 +4,9 @@
     "_github_repo":  "https://github.com/lvpingJava/tpw.git",
     "_github_account":  "lvpingJava",
     "_github_email":  "827886863@qq.com",
-    "server_url":  "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.3",
+    "server_url":  "https://cdn.jsdelivr.net/gh/lvpingJava/tpw@v6.6.0.5",
     "_server_url_note":  "jsDelivr CDN 地址。@v{版本号} 标签不可变，无缓存问题。每次发布需创建对应 tag。",
-    "version":  "6.6.0.3",
+    "version":  "6.6.0.5",
     "changelog":  "",
     "version_file":  "models/tpwVer.txt",
     "include_dirs":  [
@@ -48,7 +48,8 @@
                              ".git*",
                              ".idea*",
                              "*.md",
-                             "test*.py"
+                             "test*.py",
+                             "微信图片*"
                          ],
     "root_scripts":  [
                          "tpw_server.py",

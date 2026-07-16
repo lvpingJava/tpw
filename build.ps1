@@ -94,12 +94,13 @@ if (-not $SkipManifest) {
 
     # 0a. 更新 update_config.json 中的版本号
     $config.version = $Version
-    $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($ConfigPath, ($config | ConvertTo-Json -Depth 10), $utf8NoBom)
     Write-OK "update_config.json 版本 → $Version"
 
     # 0b. 更新 models/tpwVer.txt（旧版本号文件，保持兼容）
     if (Test-Path (Split-Path $VerFilePath)) {
-        $Version | Set-Content $VerFilePath -Encoding UTF8 -NoNewline
+        [System.IO.File]::WriteAllText($VerFilePath, $Version, (New-Object System.Text.UTF8Encoding $false))
         Write-OK "models/tpwVer.txt 版本 → $Version"
     } else {
         Write-Warn "models/tpwVer.txt 目录不存在，跳过"
@@ -111,7 +112,7 @@ if (-not $SkipManifest) {
     if ($Changelog) {
         $config.changelog = $Changelog
     }
-    $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
+    [System.IO.File]::WriteAllText($ConfigPath, ($config | ConvertTo-Json -Depth 10), $utf8NoBom)
     Write-OK "server_url → @v$Version"
     if ($Changelog) { Write-OK "changelog → $Changelog" }
 
@@ -130,7 +131,7 @@ if (-not $SkipManifest) {
     }
 
     $builderPy = Join-Path $ScriptDir "incremental_update\builder.py"
-    $builderArgs = @($builderPy, "--version", $Version)
+    $builderArgs = @($builderPy, "--version", $Version, "--config", $ConfigPath)
     if ($Changelog) {
         $builderArgs += "--changelog"
         $builderArgs += $Changelog

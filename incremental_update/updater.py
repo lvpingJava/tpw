@@ -130,7 +130,7 @@ class IncrementalUpdater:
     def get_local_version(self):
         if os.path.exists(self._local_manifest_path):
             try:
-                with open(self._local_manifest_path, 'r', encoding='utf-8') as f:
+                with open(self._local_manifest_path, 'r', encoding='utf-8-sig') as f:
                     return json.load(f).get('version', '0.0.0')
             except (json.JSONDecodeError, IOError):
                 pass
@@ -319,6 +319,8 @@ class IncrementalUpdater:
         """带 CDN 回退的文件下载：先尝试活跃 URL，失败后尝试备选源
         
         ★ v2.2: 对路径中的中文字符进行 URL 编码，避免 CDN 服务器不识别。
+        ★ v2.3: 文件下载不回溯到 raw.githubusercontent.com，国内网络极不稳定。
+                 仅使用 jsDelivr CDN 源，通过重试机制应对缓存未命中。
         """
         # URL 编码每个路径段（正确处理中文目录/文件名）
         encoded_path = '/'.join(
@@ -329,6 +331,11 @@ class IncrementalUpdater:
         for url in self._fallback_urls:
             if url != self._active_base_url:
                 try_urls.append(url)
+
+        # ★ v2.3: 排除 raw.githubusercontent.com — 国内直连极不稳定
+        # manifest 获取阶段允许 GitHub Raw 作为备选（文件小、仅一次请求），
+        # 但文件下载量大、次数多，raw 直连反复超时会严重拖慢更新流程。
+        try_urls = [u for u in try_urls if 'raw.githubusercontent.com' not in u]
 
         for base_url in try_urls:
             file_url = f"{base_url}/{encoded_path}"

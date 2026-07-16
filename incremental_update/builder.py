@@ -154,6 +154,7 @@ class ManifestBuilder:
 
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(manifest, f, indent=4, ensure_ascii=False)
+            f.write('\n')
 
         print(f"\n清单已生成: {output_path}")
         print(f"文件总数: {total} (跳过 {skipped})")
@@ -185,7 +186,7 @@ def build_from_config(config_path=None):
         print(f"错误: 配置文件不存在 {config_path}")
         return None
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, 'r', encoding='utf-8-sig') as f:
         config = json.load(f)
 
     builder = ManifestBuilder()

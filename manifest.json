@@ -1,6 +1,6 @@
 {
     "version": "6.6.1.1",
-    "build_time": "2026-07-17 18:08:19",
+    "build_time": "2026-07-17 18:15:47",
     "changelog": "测试大文件分发",
     "files": {
         "配置/21咕咕15射线310主卡.txt": {
@@ -17140,5 +17140,10 @@
             "sha256": "d1358c7ef16585e38058af6996c30ed7fc173426f96362e437898f953db6a695"
         }
     },
-    "exe_info": {}
+    "exe_info": {
+        "version": "6.6.1.1",
+        "sha256": "1667574d9df78872024298eee82f485c216af802942f9619fb7f5fd1b30574b2",
+        "url": "https://github.com/lvpingJava/tpw/releases/download/v6.6.1.1/tpw6.6.1.1.zip",
+        "size": 53790133
+    }
 }

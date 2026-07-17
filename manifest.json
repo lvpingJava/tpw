@@ -1,7 +1,7 @@
 {
-    "version": "6.6.1.0",
-    "build_time": "2026-07-16 14:10:54",
-    "changelog": "",
+    "version": "6.6.1.1",
+    "build_time": "2026-07-17 18:08:19",
+    "changelog": "测试大文件分发",
     "files": {
         "配置/21咕咕15射线310主卡.txt": {
             "md5": "01c6e93eb41d8b56f9e3e90bd3d6b93c",
@@ -16868,8 +16868,8 @@
             "sha256": "45f17fb10bac2f22e65ff520e07c5106d850d57ecf06af6e94e5065c1b4b8775"
         },
         "models/tpwVer.txt": {
-            "md5": "5c0a2d3c476142f90f3690da7bc536ed",
-            "sha256": "b457be1dc4e17d9cf34395fcb95fb0992917d0f225f33fee9157eb3623c32253"
+            "md5": "2451c8986be22051fd6943ff2bab25dc",
+            "sha256": "eca9c372ef28224ebd61328bd5ac80154e85e93868ed1109ae2efd2823a71c1f"
         },
         "models/update.png": {
             "md5": "a0250fd568a0836e9bde1ea186c8894b",
@@ -17051,9 +17051,13 @@
             "md5": "53724ebe755e8c9505a580b59a6fa5d1",
             "sha256": "bbc7e9c01d7551bb8a159b5dedd989b8ee3ce105aff522b68eb1b01bf854cab0"
         },
+        "runtime/hotfix.py": {
+            "md5": "7a5609d65de8bbd364379d8edcf40d13",
+            "sha256": "d861b6fc498d9fcb539237eef22e4aa65d515121953bc6946301b7de4e57d858"
+        },
         "tpw_server.py": {
-            "md5": "71ae8c935815a94572fa146ba018aa05",
-            "sha256": "ff6c409a88013b01bef3b6a575a0bc7b0f85b9213107405bce2a1ac889e748f7"
+            "md5": "8a16b3cfba2bc86567e612a3e85b3e59",
+            "sha256": "fee1f80aea46e17627b30f79b881df3dc9a39647fa4fe3f78c5352a6dae6589f"
         },
         "webServer.py": {
             "md5": "1e00e5af7b6e50b83d24e9cc1ee3e3be",
@@ -17135,5 +17139,6 @@
             "md5": "1b069f262b1285ac97db6645cc4a9687",
             "sha256": "d1358c7ef16585e38058af6996c30ed7fc173426f96362e437898f953db6a695"
         }
-    }
+    },
+    "exe_info": {}
 }
